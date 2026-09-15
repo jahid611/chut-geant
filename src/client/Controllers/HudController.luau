@@ -218,10 +218,13 @@ function HudController:Start(): ()
     card.Visible = false
 
     local spinning: Model? = nil
+    local previewPivot = CFrame.identity
+    local previewAngle = 0
     RunService.RenderStepped:Connect(function(dt: number)
         local model = spinning
         if model and model.Parent then
-            model:PivotTo(model:GetPivot() * CFrame.Angles(0, dt * 1.2, 0))
+            previewAngle = (previewAngle + dt * 1.2) % (2 * math.pi)
+            model:PivotTo(CFrame.Angles(0, previewAngle, 0) * previewPivot)
         end
     end)
 
@@ -237,21 +240,58 @@ function HudController:Start(): ()
             return
         end
         for _, toy in live:GetChildren() do
-            if toy:IsA("Model") and toy:GetAttribute("CarrierUserId") == player.UserId then
+            if
+                toy:IsA("Model")
+                and toy:GetAttribute("CarrierUserId") == player.UserId
+                and toy:GetAttribute("ToyId") == player:GetAttribute("CarriedToyId")
+                and toy:GetAttribute("Mutation") == player:GetAttribute("CarriedMutation")
+            then
+                local archivable = toy.Archivable
                 toy.Archivable = true
                 local copy = toy:Clone()
+                toy.Archivable = archivable
+                -- Figer avant tout déplacement ; ne jamais déplacer séparément les pièces soudées.
                 for _, descendant in copy:GetDescendants() do
-                    if descendant:IsA("ProximityPrompt") or descendant:IsA("WeldConstraint") then
+                    if descendant:IsA("BasePart") then
+                        descendant.Anchored = true
+                        descendant.CanCollide = false
+                        descendant.CanTouch = false
+                        descendant.CanQuery = false
+                        descendant.AssemblyLinearVelocity = Vector3.zero
+                        descendant.AssemblyAngularVelocity = Vector3.zero
+                    end
+                end
+                for _, descendant in copy:GetDescendants() do
+                    if
+                        descendant:IsA("LuaSourceContainer")
+                        or descendant:IsA("Sound")
+                        or descendant:IsA("Light")
+                        or descendant:IsA("ParticleEmitter")
+                        or descendant:IsA("Trail")
+                        or descendant:IsA("Beam")
+                        or descendant:IsA("Smoke")
+                        or descendant:IsA("Fire")
+                        or descendant:IsA("Sparkles")
+                        or descendant:IsA("ProximityPrompt")
+                        or descendant:IsA("Constraint")
+                        or descendant:IsA("JointInstance")
+                        or descendant:IsA("WeldConstraint")
+                        or descendant:IsA("BillboardGui")
+                        or descendant:IsA("SurfaceGui")
+                        or descendant:IsA("Highlight")
+                    then
                         descendant:Destroy()
                     end
                 end
-                copy:PivotTo(CFrame.new())
-                copy.Parent = viewport
                 local center, size = copy:GetBoundingBox()
-                viewportCamera.CFrame = CFrame.lookAt(
-                    center.Position + Vector3.new(0, size.Y * 0.25, size.Magnitude * 1.25),
-                    center.Position
-                )
+                previewPivot = center:ToObjectSpace(copy:GetPivot())
+                previewAngle = 0
+                copy:PivotTo(previewPivot)
+                copy.Parent = viewport
+                -- La sphère entourant la boîte reste cadrée pendant un tour complet, même pour un modèle allongé.
+                local radius = math.max(size.Magnitude / 2, 0.1)
+                local distance = radius * 1.1 / math.sin(math.rad(viewportCamera.FieldOfView / 2))
+                viewportCamera.CFrame = CFrame.lookAt(Vector3.new(0, 0.2, 1).Unit * distance, Vector3.zero)
                 spinning = copy
                 return
             end
@@ -283,6 +323,7 @@ function HudController:Start(): ()
         end)
     end
     player:GetAttributeChangedSignal("CarriedToyId"):Connect(updateCarried)
+    player:GetAttributeChangedSignal("CarriedMutation"):Connect(updateCarried)
     updateCarried()
 
     local function updateBack(): ()

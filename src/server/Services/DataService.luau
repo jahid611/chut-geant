@@ -52,6 +52,8 @@ export type Profile = {
     -- reglages du joueur (menu Parametres, SettingsService) et codes cadeaux deja utilises (CodeService)
     settings: { [string]: any },
     codes: { [string]: boolean },
+    -- RobuxShopService : les 100 derniers achats crédités, sauvegardés avec le solde.
+    robuxReceipts: { string },
 }
 
 local DataService = {}
@@ -63,6 +65,7 @@ DataService.StatChanged = statChanged.Event
 local profiles: { [Player]: Profile } = {}
 local loaded: { [Player]: BindableEvent } = {}
 local saveable: { [Player]: boolean } = {}
+local saving: { [Player]: boolean } = {}
 local store: DataStore? = nil
 
 local function defaultProfile(): Profile
@@ -87,6 +90,7 @@ local function defaultProfile(): Profile
         tutorial = { step = 1, done = false },
         settings = {},
         codes = {},
+        robuxReceipts = {},
     }
 end
 
@@ -148,15 +152,29 @@ function DataService:Save(player: Player): boolean
     if profile == nil or currentStore == nil or not saveable[player] then
         return false
     end
+    -- Évite qu'une autosauvegarde plus ancienne termine après celle d'un achat Robux.
+    while saving[player] do
+        task.wait()
+    end
+    if profiles[player] ~= profile or not saveable[player] then
+        return false
+    end
+    saving[player] = true
     local success, err = pcall(function()
         currentStore:UpdateAsync(keyOf(player), function()
             return profile
         end)
     end)
+    saving[player] = nil
     if not success then
         warn(string.format("[DataService] sauvegarde de %s : %s", player.Name, tostring(err)))
     end
     return success
+end
+
+-- Un profil de secours non sauvegardable ne doit jamais recevoir un achat payant.
+function DataService:CanSave(player: Player): boolean
+    return profiles[player] ~= nil and store ~= nil and saveable[player] == true
 end
 
 -- Profil du joueur s'il est charge.

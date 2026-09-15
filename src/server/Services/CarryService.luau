@@ -66,6 +66,8 @@ local BACKPACK_MODEL_NAME = "SacADos"
 local backpack: { [Player]: Instance } = {}
 local backpackWelds: { [Player]: WeldConstraint } = {}
 local lastFullNotice: { [Player]: number } = {}
+local flights: { [Instance]: () -> () } = {}
+local lastThrow: { [Player]: number } = {}
 
 local function aliveRoot(player: Player): (BasePart?, Humanoid?)
     local character = player.Character
@@ -100,6 +102,16 @@ local function sizeOf(toy: Instance): Vector3
     end
     local primary = Zone.PrimaryPart(toy)
     return if primary then primary.Size else Vector3.one
+end
+
+-- Déplace le modèle entier en prenant sa boîte englobante comme repère.
+local function placeCenter(toy: Instance, cframe: CFrame): ()
+    if toy:IsA("Model") then
+        local center = toy:GetBoundingBox()
+        toy:PivotTo(cframe * center:ToObjectSpace(toy:GetPivot()))
+    elseif toy:IsA("BasePart") then
+        toy.CFrame = cframe
+    end
 end
 
 local function setPromptEnabled(toy: Instance, enabled: boolean): ()
@@ -240,6 +252,9 @@ local function promoteBackpack(player: Player): ()
 end
 
 tryPickup = function(player: Player, toy: Instance, ignoreReach: boolean?): boolean
+    if flights[toy] then
+        return false
+    end
     if toy:GetAttribute("CarrierUserId") ~= nil or not CollectionService:HasTag(toy, TOY_TAG) then
         return false
     end
@@ -279,6 +294,7 @@ tryPickup = function(player: Player, toy: Instance, ignoreReach: boolean?): bool
         return false
     end
 
+    ToySpawnService:CancelSettling(toy)
     -- Porte, le jouet est reduit a une taille qui laisse voir (il reprend sa taille une fois pose).
     if toy:IsA("Model") and toy:GetAttribute("GroundScale") == nil then
         local limit = if carriersFor(toy) > 1 then Tuning.CARRY_MAX_SIZE_HEAVY else Tuning.CARRY_MAX_SIZE
@@ -440,6 +456,10 @@ function CarryService:ArmTrap(player: Player, toy: Instance): ()
             setPromptEnabled(exploding, true)
             ToySpawnService:ReturnToSpawn(exploding)
         elseif toy:GetAttribute("CarrierUserId") == nil then
+            local cancelFlight = flights[toy]
+            if cancelFlight then
+                cancelFlight()
+            end
             ToySpawnService:ReturnToSpawn(toy)
         end
         local exploded = Remotes.Get("TrapExploded") :: RemoteEvent
@@ -513,79 +533,148 @@ function CarryService:PutDown(player: Player): ()
     promoteBackpack(player)
 end
 
--- Lance le jouet porte dans une direction : bruit, et propulsion des autres joueurs touches en vol.
+-- Lancer physique piloté par le serveur, avec balayage entre deux images et sol de secours.
 function CarryService:Throw(player: Player, direction: Vector3): ()
     local toy: Instance? = carried[player]
     local root = aliveRoot(player)
-    if toy == nil or root == nil then
+    local now = os.clock()
+    if toy == nil or root == nil or now - (lastThrow[player] or -math.huge) < PROMOTE_AFTER_THROW then
         return
     end
+    lastThrow[player] = now
+    local forward = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+    forward = if forward.Magnitude > 0.01 then forward.Unit else Vector3.new(0, 0, -1)
     local flat = Vector3.new(direction.X, 0, direction.Z)
-    local aim = if flat.Magnitude > 0.1 then flat.Unit else root.CFrame.LookVector
+    local magnitude = flat.Magnitude
+    local aim = forward
+    -- NaN, infini, vecteur nul ou direction à plus de 60° : avant du personnage.
+    if magnitude == magnitude and magnitude > 0.1 and magnitude < math.huge then
+        local candidate = flat.Unit
+        if candidate:Dot(forward) >= 0.5 then
+            aim = candidate
+        end
+    end
     release(player)
     if giveBackIfStolen(toy) then
         promoteBackpack(player)
         return
     end
-    setPromptEnabled(toy, true)
+    setPromptEnabled(toy, false)
     task.delay(PROMOTE_AFTER_THROW, function()
-        promoteBackpack(player)
+        if player.Parent == Players then
+            promoteBackpack(player)
+        end
     end)
     local weight = weightOf(toy)
     local primary = Zone.PrimaryPart(toy)
     if primary == nil then
+        ToySpawnService:ReturnToSpawn(toy)
         return
     end
     local parts = partsOf(toy)
+    local size = sizeOf(toy)
+    local rotation = CFrame.lookAt(Vector3.zero, aim).Rotation
+    local radius = Vector2.new(size.X, size.Z).Magnitude / 2
+    local params = RaycastParams.new()
+    params.RespectCanCollide = true
+    local ignore: { Instance } = { toy }
+    -- Le sol et les murs seuls guident la trajectoire ; les joueurs sont traités séparément.
+    for _, other in Players:GetPlayers() do
+        if other.Character then
+            table.insert(ignore, other.Character)
+        end
+    end
+    for _, otherToy in CollectionService:GetTagged(TOY_TAG) do
+        table.insert(ignore, otherToy)
+    end
+    params.FilterDescendantsInstances = ignore
+    local function groundAt(position: Vector3): Vector3?
+        local ground = workspace:Raycast(position + Vector3.new(0, 0.5, 0), Vector3.new(0, -120, 0), params)
+        return if ground and ground.Normal.Y > 0.5 then ground.Position else nil
+    end
+    local floor = groundAt(root.Position)
+    if floor == nil then
+        setPromptEnabled(toy, true)
+        ToySpawnService:ReturnToSpawn(toy)
+        return
+    end
+    local chest =
+        Vector3.new(root.Position.X, math.max(root.Position.Y + 1, floor.Y + size.Y / 2 + 0.5), root.Position.Z)
+    local distance = radius + root.Size.Magnitude / 2 + 0.5
+    local wall = workspace:Raycast(chest, aim * (distance + radius), params)
+    if wall then
+        distance = math.min(distance, math.max(0, wall.Distance - radius - 0.5))
+    end
+    local start = chest + aim * distance
+    local overlap = OverlapParams.new()
+    overlap.RespectCanCollide = true
+    overlap.FilterDescendantsInstances = ignore
+    -- Un jouet réagrandi ne rentre pas toujours entre le personnage et le mur.
+    if
+        distance < radius + root.Size.Z / 2
+        or #workspace:GetPartBoundsInBox(CFrame.new(start) * rotation, size, overlap) > 0
+        or workspace:Blockcast(CFrame.new(chest) * rotation, size, start - chest, params) ~= nil
+    then
+        setPromptEnabled(toy, true)
+        ToySpawnService:ReturnToSpawn(toy)
+        return
+    end
+    local velocity = aim * (Tuning.THROW_SPEED / weight) + Vector3.new(0, Tuning.THROW_UP / math.sqrt(weight), 0)
+    local gravity = math.max(workspace.Gravity, 0.01)
+    local height = math.max(0, start.Y - size.Y / 2 - floor.Y)
+    local duration =
+        math.min(Tuning.THROW_FLIGHT_SECONDS, (velocity.Y + math.sqrt(velocity.Y ^ 2 + 2 * gravity * height)) / gravity)
+    local predicted = start + aim * (Tuning.THROW_SPEED / weight * duration)
+    local obstruction = workspace:Blockcast(CFrame.new(start) * rotation, size, predicted - start, params)
+    if obstruction then
+        predicted = start + aim * math.max(0, obstruction.Distance - 0.1)
+    end
+    local fallback = groundAt(predicted)
+
+    -- Toutes les pièces restent solidaires ; aucune vitesse ni rotation héritée du porteur.
+    for _, part in parts do
+        part.Anchored = true
+        part.CanCollide = true
+        part.CanTouch = true
+        part.Massless = false
+        part.AssemblyLinearVelocity = Vector3.zero
+        part.AssemblyAngularVelocity = Vector3.zero
+    end
+    placeCenter(toy, CFrame.new(start) * rotation)
     for _, part in parts do
         part.Anchored = false
-        part.CanCollide = true
-        part.Massless = false
     end
-    for _, part in parts do
-        pcall(function()
-            part:SetNetworkOwner(nil)
-        end)
-    end
-    primary.AssemblyLinearVelocity = aim * (Tuning.THROW_SPEED / weight)
-        + Vector3.new(0, Tuning.THROW_UP / math.sqrt(weight), 0)
-    primary.AssemblyAngularVelocity = Vector3.new(math.random(-4, 4), math.random(-4, 4), math.random(-4, 4))
+    primary:SetNetworkOwner(nil)
+    primary.AssemblyLinearVelocity = velocity
+    primary.AssemblyAngularVelocity = Vector3.zero
     madeNoiseEvent:Fire(Tuning.THROW_NOISE * weight)
 
     local hit: { [Player]: boolean } = {}
-    local landed = false
-    local connection: RBXScriptConnection? = nil
-    connection = primary.Touched:Connect(function(other: BasePart)
-        local model = other:FindFirstAncestorOfClass("Model")
-        local victim = if model then Players:GetPlayerFromCharacter(model) else nil
-        if victim and victim ~= player then
-            if not hit[victim] then
-                hit[victim] = true
-                -- Doudou bouclier : le coup est encaisse par la bulle.
-                if Abilities.ConsumeShield(victim) then
-                    return
-                end
-                -- Drop est defini plus bas dans le module
-                local service: any = CarryService
-                service:Drop(victim, false)
-                local remote = Remotes.Get("Caught") :: RemoteEvent
-                remote:FireClient(
-                    victim,
-                    "hit",
-                    aim * Tuning.HIT_LAUNCH_SPEED + Vector3.new(0, Tuning.HIT_LAUNCH_UP, 0)
-                )
-            end
-        elseif victim == nil and not landed and not other:IsDescendantOf(toy) then
-            landed = true
-            playImpact(primary, weight)
-            madeNoiseEvent:Fire(Tuning.THROW_LAND_NOISE * weight)
-        end
-    end)
-    task.delay(Tuning.THROW_FLIGHT_SECONDS, function()
-        if connection then
+    local connections: { RBXScriptConnection } = {}
+    local active = true
+    local function cleanup(): ()
+        active = false
+        flights[toy] = nil
+        for _, connection in connections do
             connection:Disconnect()
         end
-        if toy.Parent == nil or toy:GetAttribute("CarrierUserId") ~= nil then
+        table.clear(connections)
+        setPromptEnabled(toy, true)
+    end
+    flights[toy] = cleanup
+    local function land(ground: Vector3?): ()
+        cleanup()
+        if toy.Parent == nil then
+            return
+        end
+        if ground == nil or ground.Y < floor.Y - 0.5 then
+            ToySpawnService:ReturnToSpawn(toy)
+            return
+        end
+        local resting = CFrame.new(ground + Vector3.new(0, size.Y / 2 + 0.05, 0)) * rotation
+        -- Un rebond peut tourner le jouet contre une paroi : ne pas le figer à l'intérieur.
+        if #workspace:GetPartBoundsInBox(resting, size * 0.99, overlap) > 0 then
+            ToySpawnService:ReturnToSpawn(toy)
             return
         end
         for _, part in parts do
@@ -593,7 +682,100 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
             part.AssemblyAngularVelocity = Vector3.zero
             part.Anchored = true
         end
-    end)
+        placeCenter(toy, resting)
+        playImpact(primary, weight)
+        madeNoiseEvent:Fire(Tuning.THROW_LAND_NOISE * weight)
+    end
+    local function strike(victim: Player): ()
+        if not active or victim == player or hit[victim] then
+            return
+        end
+        local victimRoot, humanoid = aliveRoot(victim)
+        if victimRoot == nil or humanoid == nil then
+            return
+        end
+        hit[victim] = true
+        if Abilities.ConsumeShield(victim) then
+            return
+        end
+        CarryService:Drop(victim, false)
+        local launch = aim * Tuning.HIT_LAUNCH_SPEED + Vector3.new(0, Tuning.HIT_LAUNCH_UP, 0)
+        victimRoot.AssemblyLinearVelocity = launch
+        humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
+        local remote = Remotes.Get("Caught") :: RemoteEvent
+        remote:FireClient(victim, "hit", launch)
+    end
+    for _, part in parts do
+        table.insert(
+            connections,
+            part.Touched:Connect(function(other: BasePart)
+                for _, victim in Players:GetPlayers() do
+                    if victim.Character and other:IsDescendantOf(victim.Character) then
+                        strike(victim)
+                    end
+                end
+            end)
+        )
+    end
+    table.insert(
+        connections,
+        toy.AncestryChanged:Connect(function()
+            if not toy:IsDescendantOf(workspace) then
+                cleanup()
+            end
+        end)
+    )
+    table.insert(
+        connections,
+        Players.PlayerRemoving:Connect(function(leaving: Player)
+            hit[leaving] = nil
+            if leaving == player then
+                land(fallback)
+            end
+        end)
+    )
+    local previous = start
+    local began = os.clock()
+    table.insert(
+        connections,
+        RunService.Heartbeat:Connect(function()
+            if not active then
+                return
+            end
+            local center = if toy:IsA("Model") then toy:GetBoundingBox().Position else primary.Position
+            local movement = center - previous
+            local obstacle = if movement.Magnitude > 0.001
+                then workspace:Blockcast(CFrame.new(previous) * rotation, size, movement, params)
+                else nil
+            local travel = if obstacle then movement.Unit * math.max(0, obstacle.Distance - 0.05) else movement
+            -- Le balayage trouve aussi un joueur traversé entre deux pas de physique, avant le mur éventuel.
+            for _, victim in Players:GetPlayers() do
+                if victim == player or hit[victim] or victim.Character == nil then
+                    continue
+                end
+                local target = RaycastParams.new()
+                target.FilterType = Enum.RaycastFilterType.Include
+                target.FilterDescendantsInstances = { victim.Character }
+                local touched = if travel.Magnitude > 0.001
+                    then workspace:Blockcast(CFrame.new(previous) * rotation, size, travel, target)
+                    else nil
+                if touched then
+                    strike(victim)
+                end
+            end
+            if obstacle then
+                land(groundAt(previous + travel) or fallback)
+            elseif center.Y - size.Y / 2 < floor.Y - 0.5 or os.clock() - began >= Tuning.THROW_FLIGHT_SECONDS then
+                land(fallback)
+            else
+                local ground = groundAt(center)
+                if ground and center.Y - size.Y / 2 <= ground.Y + 0.2 and primary.AssemblyLinearVelocity.Y <= 0 then
+                    land(ground)
+                end
+            end
+            previous = center
+        end)
+    )
 end
 
 -- Prise d'un jouet par le code (tests en jeu) : memes verifications que le bouton « Voler ». Vrai si ramasse.
@@ -659,6 +841,9 @@ end
 
 -- Le joueur peut-il prendre ce jouet maintenant (mains libres, ou sac a dos pour un 2e jouet leger) ?
 function CarryService:CanTake(player: Player, toy: Instance): boolean
+    if flights[toy] then
+        return false
+    end
     if toy:GetAttribute("CarrierUserId") ~= nil or toy:GetAttribute("AspireParUserId") ~= nil then
         return false
     end
@@ -846,16 +1031,6 @@ local function makeCup(): (Model, BasePart)
     return model, (model.PrimaryPart or primary) :: BasePart
 end
 
--- Pose le centre de la boite du jouet sur cframe (rotation comprise).
-local function placeCenter(toy: Instance, cframe: CFrame): ()
-    if toy:IsA("Model") then
-        local center = toy:GetBoundingBox()
-        toy:PivotTo(cframe * center:ToObjectSpace(toy:GetPivot()))
-    elseif toy:IsA("BasePart") then
-        toy.CFrame = cframe
-    end
-end
-
 --[[
     Animation de la ventouse (vue par tous) : la ventouse file vers le jouet au bout de son fil, se colle, puis le
     jouet revient en vol en arc vers le joueur, en tournant et en retrecissant a sa taille « portee ». A l'arrivee il
@@ -863,6 +1038,10 @@ end
     onDone(ramasse) est appele a la fin.
 ]]
 function CarryService:PullToy(player: Player, toy: Instance, onDone: (boolean) -> ()): ()
+    if flights[toy] then
+        onDone(false)
+        return
+    end
     local primary = Zone.PrimaryPart(toy)
     local from = headPosition(player)
     if primary == nil or from == nil then
@@ -1181,6 +1360,7 @@ function CarryService:Start(): ()
     Players.PlayerRemoving:Connect(function(player: Player)
         CarryService:Drop(player, true)
         lastFullNotice[player] = nil
+        lastThrow[player] = nil
     end)
 
     local elapsed = 0

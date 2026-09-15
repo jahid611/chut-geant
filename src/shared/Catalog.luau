@@ -36,7 +36,7 @@ export type Item = {
 
 local Tuning = require(script.Parent:WaitForChild("Tuning"))
 
-local TABS = { "Pouvoirs", "Améliorations", "Coffres", "Armes", "Cosmétiques" }
+local TABS = { "Pouvoirs", "Améliorations", "Coffres", "Armes", "Cosmétiques", "Tétines" }
 
 local ITEMS: { Item } = {
     -- Pouvoirs actifs (touches et barre de pouvoirs : AbilityController)

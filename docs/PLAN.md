@@ -4,6 +4,33 @@ Lire ce fichier en premier à chaque reprise de session. Cocher au fur et à mes
 
 ## Concept
 
+### Boutique Robux — onglet Tétines (validation en jeu en attente)
+
+Quatre packs, séparés des achats en tétines : 2 500 pour 25 R$, 10 000 pour 79 R$,
+30 000 pour 199 R$, 100 000 pour 499 R$. Les boutons restent grisés « Bientôt » tant que
+leur `productId` vaut zéro dans `src/shared/RobuxProducts.luau`.
+
+Après publication par l'utilisateur, ouvrir l'expérience dans le Creator Hub, puis
+**Monétisation → Produits développeur** et créer les quatre produits aux prix ci-dessus.
+Copier chaque identifiant de **produit développeur** dans le `productId` du pack correspondant,
+puis déployer le code par le circuit habituel. Garder les prix `robux` affichés synchronisés avec le Hub ;
+ces étiquettes sont fixes (pas de tarification régionale ou d'optimisation des prix pour ce lot).
+Ne pas réutiliser un identifiant pour un autre montant : d'anciens reçus peuvent revenir.
+Référence : [produits développeur Roblox](https://create.roblox.com/docs/production/monetization/developer-products).
+
+`RobuxShopService`, chargé automatiquement par Main, est l'unique gestionnaire `ProcessReceipt`.
+Il attend un joueur, un profil sauvegardable et un solde initialisé, crédite via `BaseService:AddCash`,
+incrémente `robuxPurchases` et sauvegarde le solde avec `robuxReceipts` avant de confirmer l'achat.
+Un échec de sauvegarde laisse le reçu en attente sans recréditer lors du prochain essai.
+Le message client suit uniquement l'attribut serveur `RobuxTetinesCreditees`, après sauvegarde,
+même si la boutique a été fermée. Aucun nouveau remote, aucun crédit client.
+
+Limites du plan : historique borné aux 100 derniers reçus ; un reçu plus ancien n'est plus dédupliqué.
+Les sauvegardes sont sérialisées dans un serveur, mais le DataService existant n'a pas de verrou de session
+entre serveurs : les reconnexions avec chevauchement doivent être sécurisées avant une ouverture commerciale.
+Avant activation : tester les reçus répétés, les pannes de sauvegarde, la reconnexion et les achats réels
+sur une expérience publiée. Un achat réel n'est pas testable sur le place local non publié.
+
 ### Manches collectives (15/09/2026, implémentées, validation Studio en attente)
 
 - Cycle serveur : attente d'un profil et de son économie, préparation 10 s, collecte **300 s**, résultat,

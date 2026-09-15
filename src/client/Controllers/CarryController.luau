@@ -7,7 +7,7 @@
       Transform des epaules ecrit a chaque image apres les animations. Les epaules de ce place sont des
       AnimationConstraint : tourner C0 ou Attachment0 ne tenait pas (l'animation compensait, teste en jeu). Le
       client proprietaire du personnage le simule, donc les autres joueurs voient aussi la pose ;
-    - touches G (poser, sans bruit) et F (lancer vers ou regarde la camera, avec du bruit), et boutons tactiles
+    - touches G (poser, sans bruit) et F (lancer devant le personnage, avec du bruit), et boutons tactiles
       « Poser » / « Lancer » sur mobile, actifs seulement quand on porte un jouet (remote ToyAction).
 ]]
 
@@ -15,7 +15,6 @@ local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 
@@ -52,10 +51,14 @@ local function poseArms(): ()
 end
 
 local function send(action: string): ()
+    local character = player.Character
+    local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+    if root == nil or not root:IsA("BasePart") then
+        return
+    end
     Sfx.play(if action == "throw" then "throw" else "drop")
-    local camera = Workspace.CurrentCamera
     local remote = Remotes.Get("ToyAction") :: RemoteEvent
-    remote:FireServer(action, camera.CFrame.LookVector)
+    remote:FireServer(action, root.CFrame.LookVector)
 end
 
 local function onAction(name: string, state: Enum.UserInputState): Enum.ContextActionResult
