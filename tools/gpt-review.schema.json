@@ -1,0 +1,56 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["relu", "verdict", "resume", "remarques", "suivi"],
+  "properties": {
+    "relu": {
+      "type": "boolean",
+      "description": "vrai seulement si les consignes, le diff et les fichiers concernes ont bien ete lus"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["approuve", "corrections_demandees"],
+      "description": "approuve seulement s'il ne reste aucune remarque bloquante ou majeure"
+    },
+    "resume": {
+      "type": "string",
+      "description": "Deux ou trois phrases en francais : ce qui a ete relu et l'avis global"
+    },
+    "remarques": {
+      "type": "array",
+      "description": "Nouveaux problemes trouves dans les changements (vide si aucun)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "gravite", "categorie", "fichier", "ligne", "probleme", "scenario", "correction"],
+        "properties": {
+          "id": { "type": "string", "description": "Identifiant court et stable, ex. R1, R2" },
+          "gravite": { "type": "string", "enum": ["bloquant", "majeur", "mineur"] },
+          "categorie": {
+            "type": "string",
+            "enum": ["bug", "exploit", "architecture", "regle_projet", "performance", "ux"]
+          },
+          "fichier": { "type": "string", "description": "Chemin relatif au depot" },
+          "ligne": { "type": "integer", "description": "Ligne concernee, 0 si non applicable" },
+          "probleme": { "type": "string", "description": "Le defaut, en une ou deux phrases" },
+          "scenario": { "type": "string", "description": "Etat ou action concrete qui declenche le defaut" },
+          "correction": { "type": "string", "description": "Correction proposee, precise" }
+        }
+      }
+    },
+    "suivi": {
+      "type": "array",
+      "description": "Relecture finale : statut de chaque remarque precedente (vide en relecture initiale)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "statut", "commentaire"],
+        "properties": {
+          "id": { "type": "string" },
+          "statut": { "type": "string", "enum": ["corrige", "non_corrige", "rejet_accepte", "rejet_conteste"] },
+          "commentaire": { "type": "string" }
+        }
+      }
+    }
+  }
+}

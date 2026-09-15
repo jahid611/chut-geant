@@ -36,6 +36,10 @@ socket.on('data', (chunk) => {
     }
     if (reply.text) console.log(reply.text);
     for (const image of reply.images ?? []) console.log(`[image] ${image}`);
+    if (reply.isError) {
+        console.error(`ECHEC : l'outil ${tool} a signale une erreur`);
+        process.exit(1);
+    }
 });
 
 socket.on('error', (e) => {

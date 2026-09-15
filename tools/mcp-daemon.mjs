@@ -144,6 +144,16 @@ const server = net.createServer((socket) => {
                 socket.write(`${JSON.stringify({ error: `json invalide : ${e.message}` })}\n`);
                 continue;
             }
+            // Liste des outils du serveur (adaptateur MCP de Codex, tools/mcp-stdio-bridge.mjs).
+            if (request.list) {
+                try {
+                    const listed = await send('tools/list', {});
+                    socket.write(`${JSON.stringify({ tools: listed.tools ?? [] })}\n`);
+                } catch (e) {
+                    socket.write(`${JSON.stringify({ error: e.message })}\n`);
+                }
+                continue;
+            }
             try {
                 const result = await send('tools/call', {
                     name: request.tool,
@@ -165,7 +175,9 @@ const server = net.createServer((socket) => {
                     fs.writeFileSync(name, Buffer.from(item.data, 'base64'));
                     images.push(name);
                 }
-                socket.write(`${JSON.stringify({ text, images })}\n`);
+                // isError : l'outil a repondu mais signale un echec (ex. playtest impossible) ; sans ce marqueur,
+                // le texte d'erreur passait pour une reponse valide chez mcpd et chez l'arbitre.
+                socket.write(`${JSON.stringify({ text, images, isError: result.isError === true })}\n`);
             } catch (e) {
                 socket.write(`${JSON.stringify({ error: e.message })}\n`);
             }

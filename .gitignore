@@ -34,6 +34,9 @@ tools/daemon.log
 tools/rojo.log
 tools/gen3d/*.log
 *.log
+*.log.err
+# Dossiers de relecture GPT (tools/gpt-review.mjs) : diffs et reponses, recalcules a chaque passage.
+tools/reviews/
 
 # Binaires generes lourds (~1,5 Go, fichiers de plus de 50 Mo) : modeles 3D, concepts, textures, captures et videos
 # de test. Ils restent sur le PC ; les registres d identifiants Roblox (JSON) et les icones d interface sont gardes.
