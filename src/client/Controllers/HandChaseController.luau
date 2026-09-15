@@ -40,6 +40,16 @@ local FADE_IN = 0.4
 local FADE_OUT = 0.6
 local EDGE_THICKNESS = 26
 
+-- Vraie main du bebe au-dessus de l'ombre (« on la voit meme pas, que de l'ombre », utilisateur du 15/09 au soir) :
+-- modele 3D ReplicatedStorage.MainGeanteModele (tools/scene/charger-main.luau) qui plane haut loin du joueur local et
+-- descend sur lui quand l'ombre le rattrape. Sans le modele, seule l'ombre reste.
+local HAND_MODEL_NAME = "MainGeanteModele"
+-- 70 studs de haut sortait du champ de la camera du joueur : la main reste visible a 30 et descend a 8 sur lui.
+local HAND_HIGH = 30
+local HAND_LOW = 8
+-- Le modele TRELLIS a les doigts vers le haut et la paume vers la camera : on le couche paume vers le sol.
+local HAND_ROTATION = CFrame.Angles(math.rad(-90), 0, 0)
+
 local HandChaseController = {}
 
 local player = Players.LocalPlayer
@@ -48,8 +58,34 @@ local edge: UIStroke
 local rumble: Sound
 local shadow: Part? = nil
 local decal: Decal? = nil
+local hand: Model? = nil
+local handParts: { BasePart } = {}
 local shown = Vector3.zero
 local fade = 0
+
+local function buildHand(): ()
+    local template = ReplicatedStorage:FindFirstChild(HAND_MODEL_NAME)
+    if template == nil or not template:IsA("Model") then
+        return
+    end
+    local copy = template:Clone()
+    handParts = {}
+    for _, descendant in copy:GetDescendants() do
+        if descendant:IsA("LuaSourceContainer") then
+            descendant:Destroy()
+        elseif descendant:IsA("BasePart") then
+            descendant.Anchored = true
+            descendant.CanCollide = false
+            descendant.CanQuery = false
+            descendant.CanTouch = false
+            descendant.LocalTransparencyModifier = 1
+            table.insert(handParts, descendant)
+        end
+    end
+    copy.Name = "MainGeanteVisible"
+    copy.Parent = Workspace
+    hand = copy
+end
 
 local function buildShadow(at: Vector3): ()
     local part = Instance.new("Part")
@@ -73,6 +109,7 @@ local function buildShadow(at: Vector3): ()
     local smoke = Smoke.emitter(part, SHADOW_SIZE / 2, 10)
     smoke.Enabled = true
     shadow, decal, shown = part, image, at
+    buildHand()
 end
 
 local function step(dt: number): ()
@@ -106,6 +143,17 @@ local function step(dt: number): ()
     part.CFrame = CFrame.new(shown + Vector3.new(0, 0.08, 0))
     image.Transparency = 1 - fade * (SHADOW_MIN_OPACITY + (1 - SHADOW_MIN_OPACITY) * near)
 
+    local model = hand
+    if model then
+        local t = os.clock()
+        local height = HAND_HIGH + (HAND_LOW - HAND_HIGH) * near + math.sin(t * 2.5) * 1.5
+        local sway = CFrame.Angles(0, math.sin(t * 1.3) * 0.15, math.sin(t * 2.1) * 0.05)
+        model:PivotTo(CFrame.new(shown + Vector3.new(0, height, 0)) * sway * HAND_ROTATION)
+        for _, handPart in handParts do
+            handPart.LocalTransparencyModifier = 1 - fade
+        end
+    end
+
     local hear = 1 - math.clamp((distance - NEAR_DISTANCE) / (FAR_DISTANCE - NEAR_DISTANCE), 0, 1)
     rumble.Volume = RUMBLE_MAX_VOLUME * fade * hear
     if rumble.Volume > 0.01 then
@@ -127,6 +175,11 @@ local function step(dt: number): ()
     if fade <= 0 and not isActive then
         part:Destroy()
         shadow, decal = nil, nil
+        if hand then
+            hand:Destroy()
+            hand = nil
+            handParts = {}
+        end
     end
 end
 
