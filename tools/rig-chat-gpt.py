@@ -193,12 +193,19 @@ def orienter(chat, points, normales):
     p = points - centre
     _, axes = np.linalg.eigh(np.cov(p.T))
     candidats = []
-    # Tester les deux sens de chaque normale : le GLB peut être couché ou retourné.
-    for axe in list(axes.T) + list(np.eye(3)) + list(normales):
-        for signe in (-1, 1):
-            direction = normalise(axe * signe)
-            if all(np.dot(direction, autre) < 0.996 for autre in candidats):
-                candidats.append(direction)
+    import os
+
+    if os.environ.get("CHAT_HAUT_Z", "1") != "0":
+        # Les GLB de TRELLIS sont en Y-haut, que l'import glTF de Blender met en +Z : le haut est connu. La recherche
+        # libre avait couché le chat final sur le dos (queue enroulée près du sol, 15/09). CHAT_HAUT_Z=0 la réactive.
+        candidats.append(np.array([0.0, 0.0, 1.0]))
+    else:
+        # Tester les deux sens de chaque normale : le GLB peut être couché ou retourné.
+        for axe in list(axes.T) + list(np.eye(3)) + list(normales):
+            for signe in (-1, 1):
+                direction = normalise(axe * signe)
+                if all(np.dot(direction, autre) < 0.996 for autre in candidats):
+                    candidats.append(direction)
     evaluations = [score_sol(p, h) for h in candidats]
     evaluations.sort(key=lambda valeur: valeur[0], reverse=True)
     meilleur, repere = evaluations[0]
@@ -351,6 +358,10 @@ def mesurer(points, xyz, orientation):
         ecarts = np.linalg.norm(centres[:, None] - centres[None], axis=2)
         ecarts += np.eye(4) * longueur * 10
         comptes = np.bincount(labels, minlength=4)
+        # Un centre sans aucun sommet (pattes rapprochées, queue près du sol) faisait planter la mesure du pied
+        # (quantile d'un tableau vide, chat final du 15/09) : cette hauteur de coupe est simplement écartée.
+        if comptes.min() == 0:
+            continue
         qualite = ecarts.min() / max(np.median(erreurs), longueur * 0.01)
         qualite *= float(comptes.min() / max(comptes.max(), 1)) ** 0.3
         if meilleur is None or qualite > meilleur[0]:
