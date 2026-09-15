@@ -503,7 +503,16 @@ function CarryService:Drop(player: Player, returnToSpawn: boolean, launch: Vecto
     local root = aliveRoot(player)
     local origin = if root then root.Position else nil
     local bottom = 3
-    for _, released in { release(player), releaseBack(player) } do
+    local releasedToys = { release(player), releaseBack(player) }
+    local character = player.Character
+    if character and origin then
+        local box, size = character:GetBoundingBox()
+        local height = math.abs(box.RightVector.Y) * size.X
+            + math.abs(box.UpVector.Y) * size.Y
+            + math.abs(box.LookVector.Y) * size.Z
+        bottom = math.max(bottom, box.Position.Y + height / 2 + 0.5 - origin.Y)
+    end
+    for _, released in releasedToys do
         -- les nil ne sont pas stockes dans la table : chaque entree parcourue est un jouet
         local toy = released :: Instance
         if giveBackIfStolen(toy) then
@@ -520,8 +529,14 @@ function CarryService:Drop(player: Player, returnToSpawn: boolean, launch: Vecto
                 -- Au-dessus du porteur, à la taille au sol : pas d'intersection avec son corps.
                 local center = CFrame.new(position + Vector3.new(0, bottom + size.Y / 2, 0))
                 bottom += size.Y + 1 -- Les mains et le sac ne réapparaissent pas l'un dans l'autre.
-                local velocity = (launch or Vector3.zero) / weightOf(toy)
-                ToySpawnService:Launch(toy, center, velocity, position)
+                local velocity = Vector3.zero
+                if launch then
+                    local flat = Vector3.new(launch.X, 0, launch.Z)
+                    local direction = if flat.Magnitude > 0.01 then flat.Unit else Vector3.zero
+                    velocity = direction * (Tuning.TOY_DROP_LAUNCH_SPEED / weightOf(toy))
+                        + Vector3.new(0, Tuning.TOY_DROP_LAUNCH_UP, 0)
+                end
+                ToySpawnService:Launch(toy, center, velocity, position, nil, character)
             end
         end
     end
@@ -564,11 +579,11 @@ function CarryService:PutDown(player: Player): ()
     local front = root.Position + look * distance
     local ground = workspace:Raycast(front + Vector3.new(0, 4, 0), Vector3.new(0, -60, 0), params)
     local groundY = if ground then ground.Position.Y else root.Position.Y - 3
-    ToySpawnService:PlaceAt(toy, CFrame.new(front.X, groundY, front.Z) * root.CFrame.Rotation)
+    ToySpawnService:PlaceAt(toy, CFrame.new(front.X, groundY, front.Z) * root.CFrame.Rotation, player.Character)
     promoteBackpack(player)
 end
 
--- Lancer physique piloté par le serveur, avec balayage entre deux images et sol de secours.
+-- Lancer simulé par Roblox sur le serveur ; balayage des victimes et sol de secours.
 function CarryService:Throw(player: Player, direction: Vector3): ()
     local toy: Instance? = carried[player]
     local root = aliveRoot(player)
@@ -684,7 +699,9 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
         playImpact(primary, weight)
         madeNoiseEvent:Fire(Tuning.THROW_LAND_NOISE * weight)
     end
-    if not ToySpawnService:Launch(toy, CFrame.new(start) * rotation, velocity, root.Position, land) then
+    if
+        not ToySpawnService:Launch(toy, CFrame.new(start) * rotation, velocity, root.Position, land, player.Character)
+    then
         cleanup()
         return
     end
