@@ -177,7 +177,12 @@ local function hop(state: LivingState, from: Vector3): boolean
         local driver = Instance.new("NumberValue")
         driver.Value = 0
         driver.Changed:Connect(function(alpha: number)
-            if toy.Parent == nil or toy:GetAttribute("CarrierUserId") ~= nil then
+            if
+                toy.Parent == nil
+                or toy:GetAttribute("CarrierUserId") ~= nil
+                or toy:GetAttribute("PhysiqueActive") == true
+                or toy:GetAttribute("AspireParUserId") ~= nil
+            then
                 return
             end
             local position = startPivot.Position:Lerp(goal, alpha)
@@ -293,7 +298,13 @@ local function tick(): ()
         state.snore.Visible = now < state.tiredUntil and not carried
         -- clignement de temps en temps
         setEyesOpen(state, not (now % 3.2 < 0.15) and now >= state.tiredUntil)
-        if carried or now < state.readyAt or now < state.tiredUntil or not state.primary.Anchored then
+        if
+            carried
+            or toy:GetAttribute("AspireParUserId") ~= nil
+            or now < state.readyAt
+            or now < state.tiredUntil
+            or not state.primary.Anchored
+        then
             if carried then
                 state.chase = 0
             end

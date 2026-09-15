@@ -359,12 +359,13 @@ function WeaponService:Swing(player: Player, direction: Vector3?): ()
         if Abilities.ConsumeShield(target) then
             continue
         end
-        if weapon.dropsToy then
-            CarryService:Drop(target, false)
-        end
         local away = Vector3.new(hit.root.Position.X - root.Position.X, 0, hit.root.Position.Z - root.Position.Z)
         local push = if away.Magnitude > 0.1 then away.Unit else forward
-        caught:FireClient(target, "hit", push * weapon.launch + Vector3.new(0, weapon.up, 0))
+        local launch = push * weapon.launch + Vector3.new(0, weapon.up, 0)
+        if weapon.dropsToy then
+            CarryService:Drop(target, false, launch)
+        end
+        caught:FireClient(target, "hit", launch)
         NoiseService:Add(weapon.noise)
         hitRemote:FireAllClients(weapon.id, player.UserId, target.UserId, hit.root.Position)
     end

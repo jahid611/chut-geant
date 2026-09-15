@@ -7,7 +7,7 @@
     Sleeping -> Waking (Tuning.GIANT_WAKE_SECONDS, le temps de s'immobiliser)
     -> Hunting (Tuning.GIANT_HUNT_SECONDS) -> Sleeping, jauge remise a zero.
     Pendant la chasse, tout joueur de la chambre qui bouge est attrape : il lache
-    son jouet (retour a son point) et est propulse loin du berceau (le client applique
+    son jouet (projeté dans la même direction) et est propulse loin du berceau (le client applique
     la vitesse, remote Caught), au lieu d'etre teleporte a sa base.
 
     Glance : un regard bref du bebe pour les mini-jeux (« Vite, dans l'ombre ! ») ; ceux
@@ -96,11 +96,11 @@ function GiantService:Catch(player: Player, reason: string): ()
     if Abilities.ConsumeShield(player) then
         return
     end
-    CarryService:Drop(player, true)
     local away = root.Position - cribPosition()
     local flat = Vector3.new(away.X, 0, away.Z)
     local direction = if flat.Magnitude > 1 then flat.Unit else Vector3.new(0, 0, 1)
     local launch = direction * Tuning.CATCH_LAUNCH_SPEED + Vector3.new(0, Tuning.CATCH_LAUNCH_UP, 0)
+    CarryService:Drop(player, false, launch)
     local remote = Remotes.Get("Caught") :: RemoteEvent
     remote:FireClient(player, reason, launch)
     caughtEvent:Fire(player, reason)
