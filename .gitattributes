@@ -1,0 +1,11 @@
+# Fins de ligne LF dans toutes les copies (dépôt principal et copies de travail de GPT) : avec core.autocrlf=true,
+# une fusion écrivait les fichiers en CRLF et stylua (lune run check) les refusait.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.rbxl binary
+*.rbxlx binary
+*.rbxm binary
+*.fbx binary
+*.glb binary
