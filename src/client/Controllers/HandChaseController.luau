@@ -20,6 +20,7 @@ local Workspace = game:GetService("Workspace")
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 
 local Sfx = require(script.Parent.Parent.Ui.Sfx)
+local Smoke = require(script.Parent.Parent.Ui.Smoke)
 local Theme = require(script.Parent.Parent.Ui.Theme)
 
 local SHADOW_TEXTURE = "rbxassetid://123681637407382"
@@ -68,6 +69,9 @@ local function buildShadow(at: Vector3): ()
     image.Color3 = SHADOW_COLOR
     image.Transparency = 1
     image.Parent = part
+    -- fumee noire qui roule sous la main, comme les zones d'ombre (Ui/Smoke)
+    local smoke = Smoke.emitter(part, SHADOW_SIZE / 2, 10)
+    smoke.Enabled = true
     shadow, decal, shown = part, image, at
 end
 

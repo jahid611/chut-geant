@@ -30,6 +30,7 @@ local Tuning = require(Shared:WaitForChild("Tuning"))
 
 local Screamer = require(script.Parent.Parent.Ui.Screamer)
 local Sfx = require(script.Parent.Parent.Ui.Sfx)
+local Smoke = require(script.Parent.Parent.Ui.Smoke)
 local Theme = require(script.Parent.Parent.Ui.Theme)
 
 -- Sons : les deux premiers choisis par l'utilisateur, les autres crees par Roblox (Pro Sound Effects).
@@ -183,21 +184,18 @@ end
     Zones d'ombre de « Vite, dans l'ombre ! » (15/09 : les plaques violettes etaient « moches »). La piece taguee
     ShadowZone reste invisible ; tout le rendu est local (seul ce joueur le voit), pose sur le sol reel sous chaque zone
     (rayon vers le bas) :
-    - une tache d'ombre douce aux bords degrades (ombre de contact deja televersee), un peu plus large que le rayon ;
-    - un anneau fin bleu nuit / argent qui pulse doucement sur le bord, avec un voile tres leger a l'interieur ;
-    - de la poussiere d'etoiles lente qui monte dans la zone.
-    Fondu a l'apparition et a la fin ; plus lumineux pendant « IL REGARDE ! » (setShadowZonesAlert).
+    - retour utilisateur du 15/09 (« je les aime pas », image de reference : fumee noire au sol) : plus d'anneau ni de
+      poussiere d'etoiles ; une tache tres sombre aux bords degrades (ombre de contact deja televersee), plus large
+      que le rayon, et une fumee noire basse qui roule doucement dans la zone (texture de fumee integree a Roblox,
+      aucun televersement), sans aucun bord net ;
+    Fondu a l'apparition et a la fin ; plus dense pendant « IL REGARDE ! » (setShadowZonesAlert).
 ]]
 local SHADOW_TEXTURE = "rbxassetid://123681637407382"
-local SHADOW_RING_COLOR = Color3.fromRGB(175, 200, 255)
-local SHADOW_ALERT_COLOR = Color3.fromRGB(235, 242, 255)
-local SHADOW_SPREAD = 1.15 -- tache et anneau un peu plus larges que le rayon de la zone (bords degrades)
+local SHADOW_SPREAD = 1.35 -- tache plus large que le rayon de la zone : le degrade deborde, aucun bord visible
 local SHADOW_FADE = 0.6
 
 type ShadowVisual = {
     decal: Decal,
-    stroke: UIStroke,
-    veil: Frame,
     emitter: ParticleEmitter,
     baseRate: number,
 }
@@ -235,67 +233,15 @@ local function buildShadowVisual(folder: Folder, zone: BasePart, ignore: { Insta
     local decal = Instance.new("Decal")
     decal.Face = Enum.NormalId.Top
     decal.Texture = SHADOW_TEXTURE
-    decal.Color3 = Color3.fromRGB(24, 28, 60)
+    decal.Color3 = Smoke.COLOR
     decal.Transparency = 1
     decal.Parent = disc
 
-    local surface = Instance.new("SurfaceGui")
-    surface.Face = Enum.NormalId.Top
-    surface.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-    surface.CanvasSize = Vector2.new(512, 512)
-    surface.LightInfluence = 0
-    surface.Brightness = 1.6
-    surface.Parent = disc
-    local ringSize = 1 / SHADOW_SPREAD
-    local veil = Instance.new("Frame")
-    veil.Name = "Voile"
-    veil.AnchorPoint = Vector2.new(0.5, 0.5)
-    veil.Position = UDim2.fromScale(0.5, 0.5)
-    veil.Size = UDim2.fromScale(ringSize, ringSize)
-    veil.BackgroundColor3 = SHADOW_RING_COLOR
-    veil.BackgroundTransparency = 1
-    veil.BorderSizePixel = 0
-    veil.Parent = surface
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0.5, 0)
-    corner.Parent = veil
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = SHADOW_RING_COLOR
-    stroke.Thickness = 5
-    stroke.Transparency = 1
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Parent = veil
-
-    -- Poussiere d'etoiles : emise depuis un carre inscrit dans le cercle, pour rester dans la zone.
-    local dust = flatPart("PoussiereZone", radius * 1.4)
-    local emitter = Instance.new("ParticleEmitter")
-    emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-    emitter.Color = ColorSequence.new(SHADOW_RING_COLOR, Color3.new(1, 1, 1))
-    emitter.LightEmission = 1
-    emitter.LightInfluence = 0
-    emitter.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.05),
-        NumberSequenceKeypoint.new(0.5, 0.35),
-        NumberSequenceKeypoint.new(1, 0),
-    })
-    emitter.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 1),
-        NumberSequenceKeypoint.new(0.3, 0.25),
-        NumberSequenceKeypoint.new(1, 1),
-    })
-    emitter.Lifetime = NumberRange.new(3, 5)
-    emitter.Speed = NumberRange.new(0.4, 1.4)
-    emitter.Acceleration = Vector3.new(0, 0.6, 0)
-    emitter.Drag = 0.4
-    emitter.RotSpeed = NumberRange.new(-40, 40)
-    emitter.Shape = Enum.ParticleEmitterShape.Box
-    emitter.EmissionDirection = Enum.NormalId.Top
-    local rate = math.clamp(radius * 0.5, 3, 18)
-    emitter.Rate = rate
-    emitter.Enabled = false
-    emitter.Parent = dust
-
-    return { decal = decal, stroke = stroke, veil = veil, emitter = emitter, baseRate = rate }
+    -- Fumee noire basse, emise dans un carre inscrit dans le cercle : les volutes debordent en se dissipant.
+    local smoke = flatPart("FumeeZone", radius * 1.3)
+    local rate = math.clamp(radius * 0.35, 3, 14)
+    local emitter = Smoke.emitter(smoke, radius, rate)
+    return { decal = decal, emitter = emitter, baseRate = rate }
 end
 
 local function setShadowZonesVisible(visible: boolean): ()
@@ -308,10 +254,8 @@ local function setShadowZonesVisible(visible: boolean): ()
         for _, visual in previousVisuals do
             visual.emitter.Enabled = false
             TweenService:Create(visual.decal, fade, { Transparency = 1 }):Play()
-            TweenService:Create(visual.stroke, fade, { Transparency = 1 }):Play()
-            TweenService:Create(visual.veil, fade, { BackgroundTransparency = 1 }):Play()
         end
-        -- la poussiere deja emise finit sa vie avant la suppression
+        -- la fumee deja emise finit sa vie avant la suppression
         task.delay(if visible then SHADOW_FADE else 5, function()
             previous:Destroy()
         end)
@@ -342,31 +286,20 @@ local function setShadowZonesVisible(visible: boolean): ()
     shadowFolder = folder
 
     local appear = TweenInfo.new(SHADOW_FADE, Enum.EasingStyle.Sine)
-    local pulse = TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
     for _, zone in zones do
         local visual = buildShadowVisual(folder, zone, ignore)
         table.insert(shadowVisuals, visual)
         visual.emitter.Enabled = true
-        TweenService:Create(visual.decal, appear, { Transparency = 0.12 }):Play()
-        TweenService:Create(visual.veil, appear, { BackgroundTransparency = 0.93 }):Play()
-        local strokeIn = TweenService:Create(visual.stroke, appear, { Transparency = 0.2 })
-        strokeIn.Completed:Connect(function()
-            if visual.stroke.Parent then
-                TweenService:Create(visual.stroke, pulse, { Transparency = 0.65 }):Play()
-            end
-        end)
-        strokeIn:Play()
+        TweenService:Create(visual.decal, appear, { Transparency = 0.05 }):Play()
     end
 end
 
--- « IL REGARDE ! » : les zones sures brillent plus fort (anneau plus epais et plus clair, plus de poussiere).
+-- « IL REGARDE ! » : les zones sures s'epaississent (tache opaque, fumee plus dense).
 local function setShadowZonesAlert(): ()
-    local grow = TweenInfo.new(0.35, Enum.EasingStyle.Back)
+    local grow = TweenInfo.new(0.35, Enum.EasingStyle.Sine)
     for _, visual in shadowVisuals do
-        TweenService:Create(visual.stroke, grow, { Thickness = 10, Color = SHADOW_ALERT_COLOR }):Play()
-        TweenService:Create(visual.veil, grow, { BackgroundTransparency = 0.82 }):Play()
         TweenService:Create(visual.decal, grow, { Transparency = 0 }):Play()
-        visual.emitter.Rate = visual.baseRate * 2.5
+        visual.emitter.Rate = visual.baseRate * 2
     end
 end
 
@@ -540,19 +473,91 @@ local function stormEnd(): ()
     end
 end
 
+-- Eclairs a l'ecran (retour utilisateur du 15/09, image de reference : eclairs electriques bleu-violet ramifies qui
+-- traversent tout l'ecran) : voile bleu nuit, 3 a 5 eclairs dessines en segments (coeur blanc et halo violet) avec
+-- des ramifications, deux scintillements puis fondu. Effets reduits (Parametres) : voile seul.
+local BOLT_CORE = Color3.fromRGB(245, 248, 255)
+local BOLT_GLOW = Color3.fromRGB(130, 120, 255)
+local STORM_TINT = Color3.fromRGB(60, 50, 185)
+local BOLT_STEPS = 12
+
+local function boltSegment(parent: GuiObject, a: Vector2, b: Vector2, width: number, color: Color3, alpha: number): ()
+    local delta = b - a
+    local segment = Instance.new("Frame")
+    segment.BorderSizePixel = 0
+    segment.BackgroundColor3 = color
+    segment.BackgroundTransparency = alpha
+    segment.AnchorPoint = Vector2.new(0.5, 0.5)
+    segment.Position = UDim2.fromOffset((a.X + b.X) / 2, (a.Y + b.Y) / 2)
+    segment.Size = UDim2.fromOffset(delta.Magnitude + width * 0.6, width)
+    segment.Rotation = math.deg(math.atan2(delta.Y, delta.X))
+    segment.Parent = parent
+end
+
+local function drawBolt(parent: GuiObject, from: Vector2, to: Vector2, width: number, depth: number): ()
+    local direction = to - from
+    if direction.Magnitude < 1 then
+        return
+    end
+    local normal = Vector2.new(-direction.Y, direction.X).Unit
+    local points = { from }
+    for i = 1, BOLT_STEPS - 1 do
+        local jitter = (math.random() - 0.5) * direction.Magnitude * 0.12
+        table.insert(points, from + direction * (i / BOLT_STEPS) + normal * jitter)
+    end
+    table.insert(points, to)
+    for i = 1, #points - 1 do
+        boltSegment(parent, points[i], points[i + 1], width * 4, BOLT_GLOW, 0.6)
+        boltSegment(parent, points[i], points[i + 1], width, BOLT_CORE, 0)
+        if depth > 0 and math.random() < 0.22 then
+            local along = (points[i + 1] - points[i]).Unit
+            local angle = math.rad((if math.random() < 0.5 then -1 else 1) * math.random(25, 50))
+            local branch = Vector2.new(
+                along.X * math.cos(angle) - along.Y * math.sin(angle),
+                along.X * math.sin(angle) + along.Y * math.cos(angle)
+            )
+            local length = direction.Magnitude * (0.12 + math.random() * 0.15)
+            drawBolt(parent, points[i], points[i] + branch * length, width * 0.55, depth - 1)
+        end
+    end
+end
+
 local function lightningFlash(): ()
     Sfx.play("lightning")
-    local flash = Instance.new("Frame")
-    flash.Name = "Eclair"
-    flash.BackgroundColor3 = Color3.fromRGB(235, 242, 255)
-    flash.BackgroundTransparency = 0.1
-    flash.BorderSizePixel = 0
-    flash.Size = UDim2.fromScale(1, 1)
-    flash.ZIndex = 50
-    flash.Parent = gui
-    TweenService:Create(flash, TweenInfo.new(0.7, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
-    task.delay(0.75, function()
-        flash:Destroy()
+    local camera = Workspace.CurrentCamera
+    local size = if camera then camera.ViewportSize else Vector2.new(1920, 1080)
+    local layer = Instance.new("Frame")
+    layer.Name = "Eclair"
+    layer.BackgroundColor3 = STORM_TINT
+    layer.BackgroundTransparency = 0.45
+    layer.BorderSizePixel = 0
+    layer.Size = UDim2.fromScale(1, 1)
+    layer.ZIndex = 50
+    layer.Parent = gui
+    if player:GetAttribute("EffetsReduits") ~= true then
+        local bolts = math.random(3, 5)
+        for i = 1, bolts do
+            local x = size.X * (i - 0.5) / bolts + (math.random() - 0.5) * size.X * 0.12
+            local endX = x + (math.random() - 0.5) * size.X * 0.25
+            drawBolt(layer, Vector2.new(x, -20), Vector2.new(endX, size.Y + 20), 3 + math.random() * 2, 2)
+        end
+    end
+    task.spawn(function()
+        for _ = 1, 2 do
+            layer.Visible = false
+            task.wait(0.05)
+            layer.Visible = true
+            task.wait(0.08)
+        end
+        local fade = TweenInfo.new(0.45, Enum.EasingStyle.Quad)
+        TweenService:Create(layer, fade, { BackgroundTransparency = 1 }):Play()
+        for _, child in layer:GetChildren() do
+            if child:IsA("Frame") then
+                TweenService:Create(child, fade, { BackgroundTransparency = 1 }):Play()
+            end
+        end
+        task.wait(0.5)
+        layer:Destroy()
     end)
     local base = stormExposure
     if base then
@@ -1296,6 +1301,8 @@ local function onCaught(reason: string, launch: Vector3): ()
             throwSlipper(from, root)
         end
         task.delay(delay, function()
+            -- jumpscare avec la tete de maman (demande utilisateur du 15/09), au moment ou le chausson touche
+            Screamer.play("mom")
             shout(character, "BONK !", Theme.YELLOW, 1.2)
             shakeCamera(3)
             -- vol plane en tournant sur soi-meme

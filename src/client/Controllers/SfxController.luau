@@ -54,8 +54,8 @@ function SfxController:Init(): () end
 function SfxController:Start(): ()
     local caught = Remotes.Get("Caught") :: RemoteEvent
     caught.OnClientEvent:Connect(function(reason: unknown)
-        -- capture du bebe : le rire du screamer remplace le « boing » comique (Ui/Screamer)
-        if not Screamer.isBabyReason(reason) then
+        -- capture du bebe ou de maman : le son du screamer remplace le « boing » comique (Ui/Screamer)
+        if not Screamer.isScareReason(reason) then
             Sfx.play("caught")
         end
         Sfx.play("caughtWhoosh")
