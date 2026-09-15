@@ -3,16 +3,21 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Placement = require(script.Parent.ToyPlacement)
+local Tuning = require(ReplicatedStorage.Shared.Tuning)
 local Zone = require(ReplicatedStorage.Shared.Zone)
 
 local ToyPhysics = {}
 local MAX_ACTIVE = 40
 local MAX_SECONDS = 6
+local IGNORE_CHARACTER_SECONDS = 0.5
 type State = {
     primary: BasePart,
     parts: { BasePart },
     room: Instance,
     safe: Vector3,
+    origin: Vector3,
+    floorY: number,
+    ignoredCollisions: { NoCollisionConstraint },
     rotation: CFrame,
     began: number,
     still: number,
@@ -21,6 +26,13 @@ type State = {
 }
 local active: { [Instance]: State } = {}
 local count = 0
+
+local function restoreCollisions(state: State): ()
+    for _, constraint in state.ignoredCollisions do
+        constraint:Destroy()
+    end
+    table.clear(state.ignoredCollisions)
+end
 
 function ToyPhysics.Parts(toy: Instance): { BasePart }
     local parts: { BasePart } = {}
@@ -40,6 +52,7 @@ function ToyPhysics.Cancel(toy: Instance): ()
     if state then
         active[toy] = nil
         count -= 1
+        restoreCollisions(state)
         toy:SetAttribute("PhysiqueActive", nil)
         if state.done then
             state.done()
@@ -61,11 +74,11 @@ local function freeze(state: State): ()
 end
 
 local function recover(toy: Instance, state: State): ()
-    freeze(state)
     -- L'orientation droite rend la demi-hauteur exacte, même après une vrille.
     Placement.MoveCenter(toy, CFrame.new(state.safe) * state.rotation)
     local _, size = Placement.Bounds(toy)
     Placement.MoveCenter(toy, CFrame.new(state.safe + Vector3.new(0, size.Y / 2 + 0.02, 0)) * state.rotation)
+    freeze(state)
     ToyPhysics.Cancel(toy)
 end
 
@@ -75,7 +88,8 @@ function ToyPhysics.Launch(
     velocity: Vector3,
     room: Instance,
     safe: Vector3,
-    done: (() -> ())?
+    done: (() -> ())?,
+    ignoredCharacter: Model?
 ): boolean
     ToyPhysics.Cancel(toy)
     local primary = Zone.PrimaryPart(toy)
@@ -112,6 +126,21 @@ function ToyPhysics.Launch(
     end
     toy:SetAttribute("InnerWelded", true)
     Placement.MoveCenter(toy, center)
+    -- Les soudures et exclusions existent avant le désancrage. Le sol reste toujours solide.
+    local ignoredCollisions: { NoCollisionConstraint } = {}
+    if ignoredCharacter then
+        for _, bodyPart in ignoredCharacter:GetDescendants() do
+            if bodyPart:IsA("BasePart") then
+                for _, part in parts do
+                    local constraint = Instance.new("NoCollisionConstraint")
+                    constraint.Part0 = part
+                    constraint.Part1 = bodyPart
+                    constraint.Parent = part
+                    table.insert(ignoredCollisions, constraint)
+                end
+            end
+        end
+    end
     for _, part in parts do
         part.Anchored = false
     end
@@ -119,11 +148,15 @@ function ToyPhysics.Launch(
     primary.AssemblyLinearVelocity = velocity
     primary.AssemblyAngularVelocity = Vector3.zero
     local _, yaw = center:ToOrientation()
+    local floor = Placement.FloorAt(room, center.Position)
     active[toy] = {
         primary = primary,
         parts = parts,
         room = room,
         safe = safe,
+        origin = center.Position,
+        floorY = if floor then floor.Y else safe.Y,
+        ignoredCollisions = ignoredCollisions,
         rotation = CFrame.Angles(0, yaw, 0),
         began = os.clock(),
         still = 0,
@@ -152,34 +185,32 @@ RunService.Heartbeat:Connect(function(dt: number)
             ToyPhysics.Cancel(toy)
             continue
         end
-        local center, size = Placement.Bounds(toy)
-        local movement = center.Position - state.previous.Position
-        if movement.Magnitude > 0.01 then
-            local obstacle = workspace:Blockcast(state.previous, size * 0.98, movement, Placement.Params(toy))
-            if obstacle then
-                local position = state.previous.Position + movement.Unit * math.max(0, obstacle.Distance - 0.05)
-                center = CFrame.new(position) * center.Rotation
-                Placement.MoveCenter(toy, center)
-                local velocity = state.primary.AssemblyLinearVelocity
-                local inward = velocity:Dot(obstacle.Normal)
-                if inward < 0 then
-                    state.primary.AssemblyLinearVelocity = velocity - obstacle.Normal * inward * 1.15
-                end
-            end
+        local age = os.clock() - state.began
+        if age >= IGNORE_CHARACTER_SECONDS then
+            restoreCollisions(state)
         end
-        local ground = Placement.Ground(state.room, center.Position, toy)
+        -- Roblox déplace et fait rebondir l'assemblage. Aucun PivotTo ni réécriture de vitesse en vol.
+        local center, size = Placement.Bounds(toy)
         local vertical = math.abs(center.RightVector.Y) * size.X
             + math.abs(center.UpVector.Y) * size.Y
             + math.abs(center.LookVector.Y) * size.Z
         local bottom = center.Position.Y - vertical / 2
-        if ground and bottom >= ground.Y - 0.3 then
-            state.safe = ground
-        end
-        local inRoom = Placement.RoomAt(Vector3.new(center.Position.X, state.safe.Y + 3, center.Position.Z))
-            == state.room
-        if not inRoom or bottom < state.safe.Y - 1 or os.clock() - state.began >= MAX_SECONDS then
+        local floor = Placement.FloorAt(state.room, center.Position)
+        local floorY = if floor then floor.Y else state.floorY
+        local inRoom = Placement.RoomAt(center.Position) == state.room
+        -- Vérifier avant de déplacer le secours : une chute ne doit jamais abaisser le sol de référence.
+        if
+            not inRoom
+            or bottom < floorY - 0.3
+            or (center.Position - state.origin).Magnitude > Tuning.TOY_PHYSICS_MAX_DISTANCE
+            or age >= MAX_SECONDS
+        then
             recover(toy, state)
             continue
+        end
+        local ground = Placement.Ground(state.room, center.Position, toy)
+        if ground and bottom >= ground.Y then
+            state.safe = ground
         end
         -- Un objet lent au sommet de son arc n'est pas au repos : il faut aussi un appui réel.
         local supported = workspace:Raycast(
@@ -197,8 +228,12 @@ RunService.Heartbeat:Connect(function(dt: number)
         end
         state.previous = center
         if state.still >= 0.5 then
-            freeze(state)
-            ToyPhysics.Cancel(toy)
+            if bottom < floorY then
+                recover(toy, state)
+            else
+                freeze(state)
+                ToyPhysics.Cancel(toy)
+            end
         end
     end
 end)

@@ -167,6 +167,10 @@ local Tuning = {
     -- (a 115 / 70 on volait ~100 studs : « ça ne propulse pas beaucoup », retour utilisateur)
     CATCH_LAUNCH_SPEED = 200,
     CATCH_LAUNCH_UP = 110,
+    -- Jouet lâché par bébé, maman, chien ou coup : seule la direction du joueur est reprise.
+    TOY_DROP_LAUNCH_SPEED = 32,
+    TOY_DROP_LAUNCH_UP = 18,
+    TOY_PHYSICS_MAX_DISTANCE = 80,
     CATCH_STUN_SECONDS = 1.4,
     -- apres s'etre releve, court delai avant de pouvoir etre repropulse par la chasse
     CATCH_RECOVER_SECONDS = 0.6,

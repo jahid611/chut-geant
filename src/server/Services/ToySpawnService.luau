@@ -351,12 +351,12 @@ function ToySpawnService:ReturnToSpawn(toy: Instance): ()
 end
 
 -- Pose un jouet a un endroit libre (lache par un joueur) : il tombe par gravite puis se fige, comme a l'apparition.
-function ToySpawnService:PlaceAt(toy: Instance, cframe: CFrame): ()
+function ToySpawnService:PlaceAt(toy: Instance, cframe: CFrame, ignoredCharacter: Model?): ()
     local room = Placement.RoomAt(cframe.Position + Vector3.new(0, 3, 0))
     local ground = if room then Placement.Ground(room, cframe.Position, toy) else nil
     if room and ground then
         local center = Vector3.new(ground.X, math.max(cframe.Position.Y, ground.Y) + heightOf(toy) / 2 + 1, ground.Z)
-        Physics.Launch(toy, CFrame.new(center) * cframe.Rotation, Vector3.zero, room, ground)
+        Physics.Launch(toy, CFrame.new(center) * cframe.Rotation, Vector3.zero, room, ground, nil, ignoredCharacter)
     else
         self:ReturnToSpawn(toy)
     end
@@ -368,21 +368,39 @@ function ToySpawnService:Launch(
     center: CFrame,
     velocity: Vector3,
     fallback: Vector3,
-    done: (() -> ())?
+    done: (() -> ())?,
+    ignoredCharacter: Model?
 ): boolean
     local room = Placement.RoomAt(fallback)
     local ground = if room then Placement.Ground(room, fallback, toy) else nil
-    if ground == nil then
+    if ground == nil and room then
+        -- Le secours appartient à la pièce du lâcher, même après transport depuis l'autre pièce.
+        -- Chercher d'abord autour du joueur si un meuble interdit le sol à ses pieds.
+        for _, distance in { 8, 16, 24 } do
+            for index = 1, 8 do
+                local angle = index * math.pi / 4
+                local candidate = fallback + Vector3.new(math.cos(angle), 0, math.sin(angle)) * distance
+                ground = Placement.Ground(room, candidate, toy)
+                if ground then
+                    break
+                end
+            end
+            if ground then
+                break
+            end
+        end
+    end
+    if ground == nil and room then
         local point = spawnOf[toy]
-        if point then
-            ground, room = Placement.RandomGround(point, toy)
+        if point and point:IsDescendantOf(room) then
+            ground = Placement.RandomGround(point, toy)
         end
     end
     if room == nil or ground == nil then
         self:ReturnToSpawn(toy)
         return false
     end
-    return Physics.Launch(toy, center, velocity, room, ground, done)
+    return Physics.Launch(toy, center, velocity, room, ground, done, ignoredCharacter)
 end
 
 -- Contour couleur de la rarete (demande utilisateur : « pas trop flashy, moyen ») : liseré seul, sans remplissage.

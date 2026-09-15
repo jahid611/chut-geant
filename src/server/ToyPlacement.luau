@@ -79,6 +79,21 @@ function ToyPlacement.SupportParams(room: Instance): RaycastParams
     return params
 end
 
+-- Mesure indépendante du centre du jouet, y compris lorsqu'il a déjà traversé le parquet.
+function ToyPlacement.FloorAt(room: Instance, position: Vector3): Vector3?
+    local structure = room:FindFirstChild("Structure")
+    local floor = if structure then structure:FindFirstChild("Sol") else nil
+    if floor == nil or not floor:IsA("BasePart") then
+        return nil
+    end
+    local hit = workspace:Raycast(
+        Vector3.new(position.X, floor.Position.Y + 340, position.Z),
+        Vector3.new(0, -360, 0),
+        ToyPlacement.SupportParams(room)
+    )
+    return if hit and hit.Normal.Y > 0.5 then hit.Position else nil
+end
+
 -- Rayon depuis le haut de la pièce : un meuble, même bas, invalide le candidat.
 -- Les cinq sondes couvrent l'emprise du jouet ; les volumes de sécurité sont élargis de son rayon.
 function ToyPlacement.Ground(room: Instance, position: Vector3, toy: Instance, spacing: boolean?): Vector3?
@@ -138,7 +153,12 @@ function ToyPlacement.Ground(room: Instance, position: Vector3, toy: Instance, s
     end
     local overlap = OverlapParams.new()
     overlap.RespectCanCollide = true
-    overlap.FilterDescendantsInstances = params.FilterDescendantsInstances
+    -- Le rayon a mesuré la vraie surface ; la boîte du tapis MeshPart peut dépasser celle-ci.
+    local overlapIgnore = table.clone(params.FilterDescendantsInstances)
+    for _, surface in allowed do
+        table.insert(overlapIgnore, surface)
+    end
+    overlap.FilterDescendantsInstances = overlapIgnore
     local box = CFrame.new(ground + Vector3.new(0, size.Y / 2 + 0.15, 0))
     if #workspace:GetPartBoundsInBox(box, Vector3.new(radius * 2, size.Y, radius * 2), overlap) > 0 then
         return nil
