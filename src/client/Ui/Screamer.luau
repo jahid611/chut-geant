@@ -53,13 +53,14 @@ type Kind = {
 }
 
 -- Image « femme jumpscare » de l'utilisateur, televersee sur Roblox (rbxassetid://...) ; vide tant qu'elle ne l'est pas.
-local MOM_IMAGE_ID = ""
+local MOM_IMAGE_ID = "rbxassetid://97997221493943"
 -- Proportions de l'image (largeur / hauteur) et hauteur du visage dans l'image (0 = haut) : le zoom se fait sur lui.
-local MOM_IMAGE_RATIO = 1414 / 2000
-local MOM_IMAGE_FACE_Y = 0.36
+-- (image recadree en carre de 1024 px sur le visage, assets/concepts/drive/maman/maman-jumpscare-visage.png)
+local MOM_IMAGE_RATIO = 1
+local MOM_IMAGE_FACE_Y = 0.5
 -- Hauteur de l'image en fraction de l'ecran, au debut et a l'impact (visage en tres gros plan).
-local IMAGE_START = 0.35
-local IMAGE_END = 3.4
+local IMAGE_START = 0.3
+local IMAGE_END = 1.9
 
 -- Maman : copie du modele « Maman » range dans le modele de la porte (tag MomDoor), posee a PoseVisible (face a la
 -- chambre). Tete = haut de la boite englobante ; MOM_FACE_SIGN inverse l'avant si le modele regarde vers -LookVector.
@@ -129,6 +130,18 @@ local KINDS: { [string]: Kind } = {
 local Screamer = {}
 
 local playing = false
+
+-- Image de maman chargee des le demarrage : au premier jumpscare, le visage n'apparaissait pas encore (capture du
+-- 15/09, fond noir seul pendant l'approche).
+task.spawn(function()
+    if MOM_IMAGE_ID ~= "" then
+        local preload = Instance.new("ImageLabel")
+        preload.Image = MOM_IMAGE_ID
+        pcall(function()
+            game:GetService("ContentProvider"):PreloadAsync({ preload })
+        end)
+    end
+end)
 
 function Screamer.isBabyReason(reason: unknown): boolean
     return typeof(reason) == "string" and BABY_REASONS[reason] == true
@@ -256,7 +269,14 @@ function Screamer.play(kindName: string?): ()
     end
 
     scream(kind)
-    TweenService:Create(group, TweenInfo.new(APPROACH * 0.6), { BackgroundTransparency = BACKDROP_TRANSPARENCY }):Play()
+    -- Image 2D : fond noir complet presque tout de suite, sinon les bords du carre de l'image se voyaient sur la
+    -- chambre assombrie (capture du 15/09).
+    local usesImage = imageId ~= nil and imageId ~= ""
+    TweenService:Create(
+        group,
+        TweenInfo.new(if usesImage then 0.12 else APPROACH * 0.6),
+        { BackgroundTransparency = if usesImage then 0 else BACKDROP_TRANSPARENCY }
+    ):Play()
 
     local started = os.clock()
     local impacted = false

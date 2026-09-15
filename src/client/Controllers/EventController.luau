@@ -473,92 +473,80 @@ local function stormEnd(): ()
     end
 end
 
--- Eclairs a l'ecran (retour utilisateur du 15/09, image de reference : eclairs electriques bleu-violet ramifies qui
--- traversent tout l'ecran) : voile bleu nuit, 3 a 5 eclairs dessines en segments (coeur blanc et halo violet) avec
--- des ramifications, deux scintillements puis fondu. Effets reduits (Parametres) : voile seul.
-local BOLT_CORE = Color3.fromRGB(245, 248, 255)
-local BOLT_GLOW = Color3.fromRGB(130, 120, 255)
+-- Eclairs a l'ecran : la video « eclaireorage.mp4 » de l'utilisateur (15/09, « pile la video, un peu transparente
+-- pour voir le personnage derriere »). Roblox facture le televersement de video (2 000 Robux) : la video est donc
+-- jouee image par image depuis 3 planches (18 images de 512 x 286, 2 colonnes x 3 lignes, environ 11 images par
+-- seconde, extraites par ffmpeg), en semi-transparence, avec un fondu a la fin. Effets reduits : voile bleu seul.
+-- Images des planches (registre assets/ui/registry-orage.json : decalques 133907543298092, 130601474448143,
+-- 107843322934106, textures resolues dans Studio).
+local STORM_SHEETS: { string } = {
+    "rbxassetid://88801088305899",
+    "rbxassetid://74061606279529",
+    "rbxassetid://85349954624778",
+}
+local STORM_FRAME_SIZE = Vector2.new(512, 286)
+local STORM_COLUMNS = 2
+local STORM_ROWS = 3
+local STORM_FRAME_SECONDS = 1.586 / 18
+local STORM_TRANSPARENCY = 0.35
 local STORM_TINT = Color3.fromRGB(60, 50, 185)
-local BOLT_STEPS = 12
 
-local function boltSegment(parent: GuiObject, a: Vector2, b: Vector2, width: number, color: Color3, alpha: number): ()
-    local delta = b - a
-    local segment = Instance.new("Frame")
-    segment.BorderSizePixel = 0
-    segment.BackgroundColor3 = color
-    segment.BackgroundTransparency = alpha
-    segment.AnchorPoint = Vector2.new(0.5, 0.5)
-    segment.Position = UDim2.fromOffset((a.X + b.X) / 2, (a.Y + b.Y) / 2)
-    segment.Size = UDim2.fromOffset(delta.Magnitude + width * 0.6, width)
-    segment.Rotation = math.deg(math.atan2(delta.Y, delta.X))
-    segment.Parent = parent
-end
-
-local function drawBolt(parent: GuiObject, from: Vector2, to: Vector2, width: number, depth: number): ()
-    local direction = to - from
-    if direction.Magnitude < 1 then
-        return
-    end
-    local normal = Vector2.new(-direction.Y, direction.X).Unit
-    local points = { from }
-    for i = 1, BOLT_STEPS - 1 do
-        local jitter = (math.random() - 0.5) * direction.Magnitude * 0.12
-        table.insert(points, from + direction * (i / BOLT_STEPS) + normal * jitter)
-    end
-    table.insert(points, to)
-    for i = 1, #points - 1 do
-        boltSegment(parent, points[i], points[i + 1], width * 4, BOLT_GLOW, 0.6)
-        boltSegment(parent, points[i], points[i + 1], width, BOLT_CORE, 0)
-        if depth > 0 and math.random() < 0.22 then
-            local along = (points[i + 1] - points[i]).Unit
-            local angle = math.rad((if math.random() < 0.5 then -1 else 1) * math.random(25, 50))
-            local branch = Vector2.new(
-                along.X * math.cos(angle) - along.Y * math.sin(angle),
-                along.X * math.sin(angle) + along.Y * math.cos(angle)
-            )
-            local length = direction.Magnitude * (0.12 + math.random() * 0.15)
-            drawBolt(parent, points[i], points[i] + branch * length, width * 0.55, depth - 1)
+local function stormSheetsReady(): boolean
+    for _, id in STORM_SHEETS do
+        if id == "" then
+            return false
         end
     end
+    return true
 end
 
 local function lightningFlash(): ()
     Sfx.play("lightning")
-    local camera = Workspace.CurrentCamera
-    local size = if camera then camera.ViewportSize else Vector2.new(1920, 1080)
-    local layer = Instance.new("Frame")
-    layer.Name = "Eclair"
-    layer.BackgroundColor3 = STORM_TINT
-    layer.BackgroundTransparency = 0.45
-    layer.BorderSizePixel = 0
-    layer.Size = UDim2.fromScale(1, 1)
-    layer.ZIndex = 50
-    layer.Parent = gui
-    if player:GetAttribute("EffetsReduits") ~= true then
-        local bolts = math.random(3, 5)
-        for i = 1, bolts do
-            local x = size.X * (i - 0.5) / bolts + (math.random() - 0.5) * size.X * 0.12
-            local endX = x + (math.random() - 0.5) * size.X * 0.25
-            drawBolt(layer, Vector2.new(x, -20), Vector2.new(endX, size.Y + 20), 3 + math.random() * 2, 2)
-        end
-    end
-    task.spawn(function()
-        for _ = 1, 2 do
-            layer.Visible = false
-            task.wait(0.05)
-            layer.Visible = true
-            task.wait(0.08)
-        end
-        local fade = TweenInfo.new(0.45, Enum.EasingStyle.Quad)
-        TweenService:Create(layer, fade, { BackgroundTransparency = 1 }):Play()
-        for _, child in layer:GetChildren() do
-            if child:IsA("Frame") then
-                TweenService:Create(child, fade, { BackgroundTransparency = 1 }):Play()
+    local reduced = player:GetAttribute("EffetsReduits") == true
+    if reduced or not stormSheetsReady() then
+        local veil = Instance.new("Frame")
+        veil.Name = "Eclair"
+        veil.BackgroundColor3 = STORM_TINT
+        veil.BackgroundTransparency = 0.5
+        veil.BorderSizePixel = 0
+        veil.Size = UDim2.fromScale(1, 1)
+        veil.ZIndex = 50
+        veil.Parent = gui
+        TweenService:Create(veil, TweenInfo.new(0.6, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
+        task.delay(0.65, function()
+            veil:Destroy()
+        end)
+    else
+        local video = Instance.new("ImageLabel")
+        video.Name = "Eclair"
+        video.BackgroundTransparency = 1
+        video.Size = UDim2.fromScale(1, 1)
+        video.ScaleType = Enum.ScaleType.Crop
+        video.ImageRectSize = STORM_FRAME_SIZE
+        video.ImageTransparency = STORM_TRANSPARENCY
+        video.ZIndex = 50
+        video.Parent = gui
+        task.spawn(function()
+            local perSheet = STORM_COLUMNS * STORM_ROWS
+            local total = #STORM_SHEETS * perSheet
+            for frame = 0, total - 1 do
+                local sheet = frame // perSheet
+                local index = frame % perSheet
+                video.Image = STORM_SHEETS[sheet + 1]
+                video.ImageRectOffset = Vector2.new(
+                    (index % STORM_COLUMNS) * STORM_FRAME_SIZE.X,
+                    (index // STORM_COLUMNS) * STORM_FRAME_SIZE.Y
+                )
+                -- fondu sur les 4 dernieres images
+                if frame >= total - 4 then
+                    video.ImageTransparency = STORM_TRANSPARENCY
+                        + (1 - STORM_TRANSPARENCY) * ((frame - (total - 4)) / 4)
+                end
+                task.wait(STORM_FRAME_SECONDS)
             end
-        end
-        task.wait(0.5)
-        layer:Destroy()
-    end)
+            video:Destroy()
+        end)
+    end
     local base = stormExposure
     if base then
         local Lighting = game:GetService("Lighting")
@@ -1363,6 +1351,20 @@ function EventController:Start(): ()
     for _, name in { "cry", "shh", "stairs", "creak", "beep", "boom" } do
         sound(name)
     end
+    -- Planches de l'eclair chargees d'avance : sinon le premier eclair d'un orage s'affiche vide.
+    task.spawn(function()
+        local preload: { Instance } = {}
+        for _, id in STORM_SHEETS do
+            if id ~= "" then
+                local image = Instance.new("ImageLabel")
+                image.Image = id
+                table.insert(preload, image)
+            end
+        end
+        pcall(function()
+            game:GetService("ContentProvider"):PreloadAsync(preload)
+        end)
+    end)
 
     local roomEvent = Remotes.Get("RoomEvent") :: RemoteEvent
     local trapArmed = Remotes.Get("TrapArmed") :: RemoteEvent
