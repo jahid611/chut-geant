@@ -148,7 +148,8 @@ local function tryStore(player: Player, toy: Instance, position: Vector3): boole
     table.insert(profile.tentToys, { id = def.id, mutation = mutation })
     refreshDisplay(player, tent)
     BaseService:RefreshIncome(player)
-    BaseService:NotifyDeposited(player, def.id, mutation)
+    local source = if toy:GetAttribute("StolenFromUserId") ~= nil then "stolen" else "room"
+    BaseService:NotifyDeposited(player, def.id, mutation, source)
     message(player, string.format("Rangé dans le tipi (%d/%d)", #profile.tentToys, CAPACITY))
     return true
 end

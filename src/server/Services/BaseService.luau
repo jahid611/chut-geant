@@ -463,9 +463,9 @@ end
 
 -- Un jouet vole a ete range ailleurs que dans un coffre (tipi) : memes stats et meme evenement qu'un depot en
 -- coffre (quetes, collection, XP).
-function BaseService:NotifyDeposited(player: Player, toyId: string, mutationId: string?): ()
+function BaseService:NotifyDeposited(player: Player, toyId: string, mutationId: string?, source: string?): ()
     DataService:AddStat(player, "stolen", 1)
-    toyDeposited:Fire(player, toyId, mutationId)
+    toyDeposited:Fire(player, toyId, mutationId, source or "room")
 end
 
 -- Recalcule l'attribut Income (apres un coffre dore, un bonus qui change...).
@@ -593,7 +593,8 @@ function BaseService:TryDeposit(
     player: Player,
     toyId: string,
     mutationId: string?,
-    position: Vector3
+    position: Vector3,
+    source: string?
 ): (boolean, string?)
     local base: BasePart? = baseOf[player]
     if base == nil or not Zone.Contains(base, position) or Toys.Get(toyId) == nil then
@@ -612,8 +613,7 @@ function BaseService:TryDeposit(
     table.insert(list, entry)
     dropToy(player, entry, math.ceil(#list / Tuning.CHEST_CAPACITY))
     refreshCounts(player)
-    DataService:AddStat(player, "stolen", 1)
-    toyDeposited:Fire(player, toyId, mutation)
+    self:NotifyDeposited(player, toyId, mutation, source)
     return true, nil
 end
 

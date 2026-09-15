@@ -6,6 +6,26 @@
 ]]
 
 local Tuning = {
+    -- Manches collectives : seuls les dépôts stockés venant du monde comptent.
+    ROUND_PREPARE_SECONDS = 10,
+    ROUND_ACTIVE_SECONDS = 300,
+    ROUND_RESULT_SECONDS = 6,
+    ROUND_PAUSE_SECONDS = 10,
+    ROUND_SOLO_GOAL = 6,
+    ROUND_EXTRA_PLAYER_GOAL = 4,
+    ROUND_REWARD_CAP = 12,
+    ROUND_FAILURE_CASH = 100,
+    ROUND_FAILURE_XP = 5,
+    ROUND_SUCCESS_CASH = 200,
+    ROUND_SUCCESS_XP = 10,
+    ROUND_SUCCESS_CASH_BONUS = 300,
+    ROUND_SUCCESS_XP_BONUS = 20,
+    ROUND_PUBLISH_SECONDS = 0.5,
+    ROUND_POLL_SECONDS = 0.1,
+    ROUND_LEADERBOARD_SIZE = 8,
+    ROUND_LAST_MINUTE_SECONDS = 60,
+    ROUND_URGENT_SECONDS = 10,
+
     -- Deplacement
     -- 15/09 : un peu plus rapide (retour utilisateur), 14 -> 17 ; les autres vitesses suivent en proportion (x1,21)
     -- et SNEAK_SPEED aussi, donc le bruit a pleine vitesse ne change pas (NoiseService rapporte la vitesse a ces deux).

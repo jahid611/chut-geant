@@ -1070,7 +1070,8 @@ local function checkCarriers(): ()
         end
         if typeof(toyId) == "string" then
             local mutation = if typeof(mutationId) == "string" then mutationId else nil
-            local deposited, reason = BaseService:TryDeposit(player, toyId, mutation, root.Position)
+            local source = if toy:GetAttribute("StolenFromUserId") ~= nil then "stolen" else "room"
+            local deposited, reason = BaseService:TryDeposit(player, toyId, mutation, root.Position, source)
             if deposited then
                 release(player)
                 ToySpawnService:OnTaken(toy)

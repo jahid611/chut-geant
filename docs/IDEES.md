@@ -4,6 +4,11 @@ Carnet vivant tenu pendant les sessions autonomes : idées à moi, notées au fi
 réalisées. « En cours » = un agent y travaille ; « Fait » = codé et vérifié en jeu.
 
 ## En cours (nuit du 15-16/09)
+- **Manches collectives de cinq minutes** : cycle, objectif commun (6 seul, +4 par joueur), contributions,
+  primes et bilan codés. Événements en cours conservés ; tirages suspendus entre les manches. Maman en finale
+  d'échec seulement si disponible, bébé endormi et aucun événement en cours. Tests purs et `lune run check` verts.
+  **Pas encore vérifié en jeu** : playtests et captures à faire par Claude, protocole dans `docs/PLAN.md`.
+  Coffres pleins et joueurs sans base restent bloqués pour contribuer ; huit joueurs et mobile à tester à la main.
 - **Rythme de la boucle, lot 1** : réapparition chambre 8 s, Furie 3 s / recharge 20 s / prix 750,
   rampe de bruit 8→13, décroissance 8/s, contributions secondaires à 50 %. Points communs d'accueil créés
   au démarrage devant les sorties réelles, prioritaires pour le tutoriel. Calcul testé hors Studio : saturation
@@ -20,6 +25,9 @@ réalisées. « En cours » = un agent y travaille ; « Fait » = codé et véri
   Studio ; probablement une requête gardée en cache par la session Studio, à revérifier après un redémarrage.
 
 ## Idées à faire (priorité haute d'abord)
+- **Contribuer malgré un coffre plein ou l'absence de base** : tâche séparée après les manches, selon C1-R4.
+  Étudier la livraison collective de secours et la capacité pour les joueurs 7 et 8 (six bases existantes).
+  Aujourd'hui l'objectif inclut les joueurs initialisés sans base, mais ils ne peuvent pas déposer.
 - **Retour éclair — tâche suivante, plan séparé** : prime de retour facultative. Étudier le contrôle simplifié
   proposé par Claude (distance prise → extérieur de base, marge fixe d'intérieur et durée minimale à vitesse
   maximale autorisée, Furie comprise ×1,25), sans échantillonnage ni jeton de porte. Les volumes `Base` sont

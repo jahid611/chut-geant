@@ -4,6 +4,88 @@ Lire ce fichier en premier à chaque reprise de session. Cocher au fur et à mes
 
 ## Concept
 
+### Manches collectives (15/09/2026, implémentées, validation Studio en attente)
+
+- Cycle serveur : attente d'un profil et de son économie, préparation 10 s, collecte **300 s**, résultat,
+  pause 10 s, puis nouvelle collecte. Objectif figé au départ : **6 jouets seul, +4 par joueur supplémentaire**
+  (34 à huit). Une arrivée tardive n'augmente pas cet objectif ; un départ ne le diminue pas.
+- Chaque dépôt accepté dans un coffre ou un tipi ajoute une contribution au déposant. Chambre, accueil, cuisine,
+  événements : même valeur, sans dépendre de la rareté. Le quatrième argument serveur `source` de `ToyDeposited`
+  vaut `room` ou `stolen` : les vols entre joueurs sont exclus, y compris dans le tipi et après portage dans le sac.
+  `NotifyDeposited` et `TryDeposit` prennent une source facultative (`room` par défaut pour les anciens appels).
+  Restitution et rechargement de sauvegarde n'émettent pas ce signal. Aucun reçu ni deuxième chemin de consommation.
+- Atteindre l'objectif ne termine pas la manche : continuer jusqu'à zéro augmente sa contribution. À l'échéance,
+  le score est figé avant les paiements ; un dépôt traité à l'échéance ou après est exclu. Contributions conservées
+  par UserId en cas de reconnexion sur le même serveur, jusqu'à la prochaine manche. Serveur vide : abandon sans prime.
+- Prime automatique aux contributeurs présents et initialisés à la clôture, avec `c = min(contribution, 12)` :
+  échec = `100c` tétines et `5c` XP ; réussite = `200c + 300` tétines et `10c + 20` XP.
+  Zéro contribution = zéro prime. Aucun bonus de rang. Six dépôts réussis en solo : **1 500 tétines et 80 XP**.
+  Versement par `BaseService:AddCash` et `PassService:AddXp(..., "manche")`, statistiques `roundsPlayed` / `roundsWon`
+  des contributeurs payés. Pas de gain hors ligne ni de paiement rejoué au retour après la clôture.
+- Argent, XP et statistiques utilisent la sauvegarde existante (une panne avant sauvegarde peut perdre un gain).
+  Classement et manche restent en mémoire. Possessions, revenus, Nuits, défis, combos et records historiques persistent.
+- **Périmètre réduit après critique de Claude C1-R1 à C1-R6** : aucun événement n'est annulé, aucun verrou ajouté
+  au bébé. `EventService:SetPaused` saute uniquement les tirages ordinaires pendant résultat et pause. Les pièges,
+  chasses et événements déjà lancés finissent normalement. À la clôture d'un échec, maman est déclenchée seulement
+  si le bébé dort, qu'aucun événement ne tourne et que maman et sa porte sont présents. Sinon : bilan seul.
+  Le bilan détaillé attend la fin réelle de la finale de maman, préavis compris, puis reste 6 s avant la pause.
+  Réussite ou échec sans maman : résultat 6 s. Les événements ordinaires reprennent à la collecte suivante.
+- Aucun nouveau remote. Attributs Workspace `MancheId`, `ManchePhase`, `MancheDebut`, `MancheFin`, `MancheObjectif`,
+  `MancheProgression`, `MancheReussie`, `MancheBilanPret`, `MancheClassement`, `MancheRevision` ; instantané JSON
+  cohérent avec huit premières lignes au plus. Attributs joueur `MancheId`, `MancheContribution`, `MancheRang`,
+  `ManchePersonnel`, `MancheDernierResultat` (dernier versement). Publication à 2 Hz et immédiatement aux transitions.
+- Barre dédiée en bas au centre, au-dessus des pouvoirs et armes : icône, progression, chrono, contribution,
+  bouton local de classement. Messages de dernière minute et d'objectif atteint dans cette barre. Bilan `Ui/Modal`
+  défilant, ligne personnelle même hors du top huit, montants versés. L'ouverture automatique attend la fermeture
+  des autres menus, bandeaux d'événement et caméras scriptées ; le bilan reste consultable pendant la pause.
+  Aucun contrôleur existant déplacé, aucune modification de caméra. Fanfare via les réglages sonores existants ;
+  pulsation de réussite désactivée avec `EffetsReduits`.
+
+**Limites reportées, à traiter dans une tâche suivante :** les coffres durablement pleins empêchent de contribuer
+sans libérer de place/acheter un coffre (ou déposer dans un tipi disponible). Les joueurs sans base personnelle
+ne peuvent pas contribuer : six bases selon la relecture de Claude, donc les joueurs 7 et 8 sont concernés.
+Le calcul est prévu pour huit, mais **la jouabilité à huit n'est pas validée ni résolue par ce lot**.
+La livraison collective de secours et l'ajout de bases sont hors de ce périmètre. Aucune chambre reconstruite.
+
+#### Vérifications et commandes pour Claude
+
+- `lune run test-rounds` : tests purs réussis (objectifs 1–8, limites temporelles, provenance, reconnexion par UserId,
+  égalités, clôture répétée, primes, objectif dépassé et ancienne manche). Ces tests ne simulent pas le portage.
+- `lune run check` : vert (sourcemap, selene, stylua, luau-lsp).
+- **Aucun playtest ni capture réalisés par GPT**. Claude lance les tests par l'arbitre, puis lit les journaux
+  et arrête chaque session. Pas de changement permanent des 300 secondes de production.
+
+Appel court `eval_server_runtime` après initialisation du joueur, pour préparer un succès rapide :
+
+```luau
+local services = game:GetService("ServerScriptService").Server.Services
+local round = require(services.RoundService)
+local base = require(services.BaseService)
+local player = game:GetService("Players"):GetPlayers()[1]
+assert(round:DebugStart(12)) -- Studio seulement, 1 à 300 s ; refuse pendant sa finale maman
+for _ = 1, 6 do
+    base:NotifyDeposited(player, "Duck", nil, "room")
+end
+base:NotifyDeposited(player, "Duck", nil, "stolen") -- ne doit pas ajouter de contribution
+return { fin = workspace:GetAttribute("MancheFin"), id = workspace:GetAttribute("MancheId") }
+```
+
+Lire après 0,5 s `MancheProgression` et `ManchePersonnel` (6), puis après l'échéance
+`MancheDernierResultat` (1 500 tétines, 80 XP) et `MancheClassement`. Attendre côté shell entre les appels courts.
+Un deuxième appel de lecture ne doit pas changer le versement. Les revenus ordinaires continuent : ne pas comparer
+le solde total sans les distinguer. `NotifyDeposited` conserve ses effets historiques (stats, combo, défis, XP) :
+ce script teste le signal et la manche, **pas une possession ajoutée ni le chemin réel de portage**.
+
+Pour l'échec : `RoundService:DebugStart(3)` sans dépôt, lire les phases et vérifier maman si disponible ; recommencer
+pendant `EventService:Trigger("GoldenToy")` ou `"PowerOutage"` pour constater que l'événement finit normalement,
+sans deuxième maman. Faire aussi un cycle **réel de 300 s**, pause et départ suivant, puis réussite anticipée avec
+dépôts supplémentaires, reconnexion avant/après clôture et serveur vide. Vérifier dépôts réels coffre/tipi/sac,
+provenance volée, jouet lourd, cuisine/accueil, captures et régressions combo/défis/records/classements.
+Vérifier monnaie et XP après sauvegarde/reconnexion si DataStore est disponible ; sinon persistance non vérifiée.
+Captures à faire : HUD et bilan, noms longs, défi et événement simultanés, menus, réapparition et arrivée tardive.
+**À tester à la main par l'utilisateur :** marche réelle, ressenti, coopération, huit joueurs et téléphone
+portrait/paysage ; le banc solo ne prouve pas ces points.
+
 ### Rythme de la boucle — premier lot (15/09/2026, validation en jeu en attente)
 
 - Chambre : remplacement 8 s après dépôt, sauf les points d'accueil à 25 s pour limiter la boucle de combo

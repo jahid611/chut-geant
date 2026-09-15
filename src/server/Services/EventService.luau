@@ -67,6 +67,7 @@ EventService.EventFinished = eventFinished.Event
 
 local random = Random.new()
 local running = false
+local paused = false
 
 local function playersInRoom(): { Player }
     local list: { Player } = {}
@@ -864,6 +865,12 @@ function EventService:IsRunning(): boolean
     return running
 end
 
+-- Suspend uniquement les tirages ordinaires ; l'événement en cours se termine normalement.
+-- Trigger reste disponible pour la finale de manche et les tests serveur.
+function EventService:SetPaused(value: boolean): ()
+    paused = value
+end
+
 function EventService:Init(): () end
 
 function EventService:Start(): ()
@@ -875,7 +882,7 @@ function EventService:Start(): ()
         task.wait(Tuning.EVENT_FIRST_DELAY)
         while true do
             local state = GiantService:GetState()
-            if not running and state == "Sleeping" and #Players:GetPlayers() > 0 then
+            if not paused and not running and state == "Sleeping" and #Players:GetPlayers() > 0 then
                 local def = pickEvent()
                 if def then
                     running = true

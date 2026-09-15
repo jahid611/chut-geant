@@ -42,5 +42,16 @@
     "remarques_graves": 1,
     "playtests_rates": 0,
     "duree_min": 18
+  },
+  {
+    "date": "2026-09-15T13:17:24.603Z",
+    "tache": "Manches de 5 minutes avec un objectif pour tout le serveur (retour utilisateur : le jeu est ennuyant ; il faut un début, un milieu et une fin au lieu d'une boucle sans fin). Existant à réutiliser, pas à dupliquer : EventService (événements toutes les 40-75 s), ChallengeService (défis chronométrés individuels, 1 par joueur toutes les 10 min), RecordsService (records de la nuit, remis à zéro au redémarrage du serveur), LeaderboardService (classement du serveur et mondial), FeedService (fil d'actualité), ComboService, HandChaseService (course-poursuite), BaseService.ToyDeposited, GiantService (réveils, Caught). Rien de tout cela n'est une manche. Objectif : une manche de 5 minutes pour tous les joueurs du serveur, avec un objectif collectif affiché (par exemple : voler N jouets ensemble, N adapté au nombre de joueurs, ou valeur totale volée), compte à rebours visible, classement de la manche (contributions par joueur), fin spectaculaire (réussite ou échec, par exemple maman qui arrive si l'objectif est raté), récompenses selon la contribution et la réussite, courte pause puis nouvelle manche. Rester jouable seul et à 8. Tout décidé côté serveur (anti-triche : le client n'envoie rien pour la manche), valeurs dans Shared/Tuning, un seul remote serveur -> clients si nécessaire, état en attributs, interface existante (Theme, bandeaux d'EventController, pas de débordement, icônes plutôt que texte), texte français sans emoji, pas de décor en pièces de base. Ne pas reconstruire la chambre. Tests possibles avec le banc : playtest solo, scripts eval_server_runtime (dépôts simulés par les API serveur existantes), captures ; marche réelle et multijoueur à tester à la main par l'utilisateur.",
+    "type": "serveur",
+    "implementeur": "gpt",
+    "relecteur": "claude",
+    "iterations": 1,
+    "remarques_graves": 3,
+    "playtests_rates": 0,
+    "duree_min": 20
   }
 ]
