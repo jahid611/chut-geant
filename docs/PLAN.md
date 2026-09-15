@@ -738,3 +738,19 @@ Avancement à 04h30 :
   non clôturée.
 - Reste : portée des lancers depuis le devant des bases (8 à 10 studs dos à la base, 42 à 45 ailleurs), intérieurs
   des bases non testés.
+
+### 15/09/2026, 20 h 15 — chat de la maison qui marche vraiment, oreiller en 3D
+- **Chat** : le « Low Poly Cat » assis du Creator Store (maillage d'un autre créateur, EditableMesh refusé) est remplacé
+  par un chat debout recréé en local (FLUX puis TRELLIS). Squelette anatomique de 22 os posé par
+  `tools/rig-chat-gpt.py` : colonne, cou, tête, queue en trois segments, épaule/coude/poignet, hanche, genou vers
+  l'avant, jarret vers l'arrière, métatarse. Il est chargé dans `ServerStorage.DecorModels.HouseCat` par
+  `tools/scene/charger-chat.luau`.
+- **Duel Claude / GPT sur le squelette** : le script de GPT est retenu. ARMATURE_AUTO échoue en silence sur les
+  maillages TRELLIS non étanches (0 sommet pondéré) ; GPT le détecte et pose des poids anatomiques bornés par os.
+  `tools/rig-chat.py` (Claude) reste en archive, il ne déformait rien.
+- **Marche** : `CatWalkController` anime les os côté client selon la vitesse réelle, en marche à quatre temps
+  (arrière gauche, avant gauche, arrière droite, avant droite), colonne, tête et queue suivant le pas. Vu en jeu :
+  22 os, angles qui changent (épaule 0,2° puis -5,7°), 0 erreur.
+- **Oreiller-arme** : vrai modèle 3D (asset 100675490962807) à la place de la Part en marbre, icône tirée du modèle.
+  Défaut : dos gris non texturé par TRELLIS.
+- **Sauvegarder la place (Ctrl+S)** : les nouveaux modèles de l'oreiller et du chat n'existent que dans Studio.
