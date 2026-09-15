@@ -244,9 +244,9 @@ local function promoteBackpack(player: Player): ()
     end
     if not tryPickup(player, toy, true) then
         setPromptEnabled(toy, true)
-        for _, part in partsOf(toy) do
-            part.CanCollide = true
-            part.Massless = false
+        local primary = Zone.PrimaryPart(toy)
+        if primary then
+            ToySpawnService:PlaceAt(toy, CFrame.new(primary.Position))
         end
     end
 end
@@ -352,6 +352,9 @@ tryPickup = function(player: Player, toy: Instance, ignoreReach: boolean?): bool
     weld.Part0 = root
     weld.Part1 = primary
     weld.Parent = primary
+    -- Le jouet appartient maintenant à l'assemblage du personnage. La prochaine libération
+    -- rendra explicitement sa simulation au serveur, après destruction de cette soudure.
+    root:SetNetworkOwnershipAuto()
 
     toy:SetAttribute("CarrierUserId", player.UserId)
     local toyId = toy:GetAttribute("ToyId")
@@ -492,6 +495,38 @@ local function setupPrompt(toy: Instance): ()
     prompt.Parent = primary
 end
 
+--[[
+    Lâche les mains et le sac. Une propulsion serveur prend priorité sur returnToSpawn.
+    Sans propulsion, true reste réservé aux restitutions (mort, déconnexion, renaissance).
+]]
+function CarryService:Drop(player: Player, returnToSpawn: boolean, launch: Vector3?): ()
+    local root = aliveRoot(player)
+    local origin = if root then root.Position else nil
+    local bottom = 3
+    for _, released in { release(player), releaseBack(player) } do
+        -- les nil ne sont pas stockes dans la table : chaque entree parcourue est un jouet
+        local toy = released :: Instance
+        if giveBackIfStolen(toy) then
+            continue
+        end
+        setPromptEnabled(toy, true)
+        if returnToSpawn and launch == nil then
+            ToySpawnService:ReturnToSpawn(toy)
+        else
+            local primary = Zone.PrimaryPart(toy)
+            if primary then
+                local position = origin or primary.Position
+                local size = sizeOf(toy)
+                -- Au-dessus du porteur, à la taille au sol : pas d'intersection avec son corps.
+                local center = CFrame.new(position + Vector3.new(0, bottom + size.Y / 2, 0))
+                bottom += size.Y + 1 -- Les mains et le sac ne réapparaissent pas l'un dans l'autre.
+                local velocity = (launch or Vector3.zero) / weightOf(toy)
+                ToySpawnService:Launch(toy, center, velocity, position)
+            end
+        end
+    end
+end
+
 -- Pose le jouet porte juste devant le joueur, sans bruit : il est lache au ras du sol trouve devant lui et tombe par
 -- gravite (pas de pose dans un mur : on s'arrete avant l'obstacle). Le jouet du sac a dos passe ensuite dans les mains.
 function CarryService:PutDown(player: Player): ()
@@ -620,35 +655,6 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
         return
     end
     local velocity = aim * (Tuning.THROW_SPEED / weight) + Vector3.new(0, Tuning.THROW_UP / math.sqrt(weight), 0)
-    local gravity = math.max(workspace.Gravity, 0.01)
-    local height = math.max(0, start.Y - size.Y / 2 - floor.Y)
-    local duration =
-        math.min(Tuning.THROW_FLIGHT_SECONDS, (velocity.Y + math.sqrt(velocity.Y ^ 2 + 2 * gravity * height)) / gravity)
-    local predicted = start + aim * (Tuning.THROW_SPEED / weight * duration)
-    local obstruction = workspace:Blockcast(CFrame.new(start) * rotation, size, predicted - start, params)
-    if obstruction then
-        predicted = start + aim * math.max(0, obstruction.Distance - 0.1)
-    end
-    local fallback = groundAt(predicted)
-
-    -- Toutes les pièces restent solidaires ; aucune vitesse ni rotation héritée du porteur.
-    for _, part in parts do
-        part.Anchored = true
-        part.CanCollide = true
-        part.CanTouch = true
-        part.Massless = false
-        part.AssemblyLinearVelocity = Vector3.zero
-        part.AssemblyAngularVelocity = Vector3.zero
-    end
-    placeCenter(toy, CFrame.new(start) * rotation)
-    for _, part in parts do
-        part.Anchored = false
-    end
-    primary:SetNetworkOwner(nil)
-    primary.AssemblyLinearVelocity = velocity
-    primary.AssemblyAngularVelocity = Vector3.zero
-    madeNoiseEvent:Fire(Tuning.THROW_NOISE * weight)
-
     local hit: { [Player]: boolean } = {}
     local connections: { RBXScriptConnection } = {}
     local active = true
@@ -662,30 +668,19 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
         setPromptEnabled(toy, true)
     end
     flights[toy] = cleanup
-    local function land(ground: Vector3?): ()
+    local function land(): ()
         cleanup()
         if toy.Parent == nil then
             return
         end
-        if ground == nil or ground.Y < floor.Y - 0.5 then
-            ToySpawnService:ReturnToSpawn(toy)
-            return
-        end
-        local resting = CFrame.new(ground + Vector3.new(0, size.Y / 2 + 0.05, 0)) * rotation
-        -- Un rebond peut tourner le jouet contre une paroi : ne pas le figer à l'intérieur.
-        if #workspace:GetPartBoundsInBox(resting, size * 0.99, overlap) > 0 then
-            ToySpawnService:ReturnToSpawn(toy)
-            return
-        end
-        for _, part in parts do
-            part.AssemblyLinearVelocity = Vector3.zero
-            part.AssemblyAngularVelocity = Vector3.zero
-            part.Anchored = true
-        end
-        placeCenter(toy, resting)
         playImpact(primary, weight)
         madeNoiseEvent:Fire(Tuning.THROW_LAND_NOISE * weight)
     end
+    if not ToySpawnService:Launch(toy, CFrame.new(start) * rotation, velocity, root.Position, land) then
+        cleanup()
+        return
+    end
+    madeNoiseEvent:Fire(Tuning.THROW_NOISE * weight)
     local function strike(victim: Player): ()
         if not active or victim == player or hit[victim] then
             return
@@ -698,8 +693,8 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
         if Abilities.ConsumeShield(victim) then
             return
         end
-        CarryService:Drop(victim, false)
         local launch = aim * Tuning.HIT_LAUNCH_SPEED + Vector3.new(0, Tuning.HIT_LAUNCH_UP, 0)
+        CarryService:Drop(victim, false, launch)
         victimRoot.AssemblyLinearVelocity = launch
         humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
         local remote = Remotes.Get("Caught") :: RemoteEvent
@@ -730,12 +725,12 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
         Players.PlayerRemoving:Connect(function(leaving: Player)
             hit[leaving] = nil
             if leaving == player then
-                land(fallback)
+                -- Le jouet poursuit sa chute ; le départ ne le téléporte pas.
+                cleanup()
             end
         end)
     )
     local previous = start
-    local began = os.clock()
     table.insert(
         connections,
         RunService.Heartbeat:Connect(function()
@@ -761,16 +756,6 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
                     else nil
                 if touched then
                     strike(victim)
-                end
-            end
-            if obstacle then
-                land(groundAt(previous + travel) or fallback)
-            elseif center.Y - size.Y / 2 < floor.Y - 0.5 or os.clock() - began >= Tuning.THROW_FLIGHT_SECONDS then
-                land(fallback)
-            else
-                local ground = groundAt(center)
-                if ground and center.Y - size.Y / 2 <= ground.Y + 0.2 and primary.AssemblyLinearVelocity.Y <= 0 then
-                    land(ground)
                 end
             end
             previous = center
@@ -1049,6 +1034,7 @@ function CarryService:PullToy(player: Player, toy: Instance, onDone: (boolean) -
         return
     end
     toy:SetAttribute("AspireParUserId", player.UserId)
+    ToySpawnService:CancelSettling(toy)
     setPromptEnabled(toy, false)
     local parts = partsOf(toy)
     for _, part in parts do
@@ -1159,29 +1145,6 @@ end
 
 function CarryService:GetBackpack(player: Player): Instance?
     return backpack[player]
-end
-
---[[
-    Lache les jouets portes (mains et sac a dos). returnToSpawn = vrai : ils retournent a leur point d'origine
-    (attrape par le geant, deconnexion). Sinon ils tombent la ou ils sont.
-]]
-function CarryService:Drop(player: Player, returnToSpawn: boolean): ()
-    for _, released in { release(player), releaseBack(player) } do
-        -- les nil ne sont pas stockes dans la table : chaque entree parcourue est un jouet
-        local toy = released :: Instance
-        if giveBackIfStolen(toy) then
-            continue
-        end
-        setPromptEnabled(toy, true)
-        if returnToSpawn then
-            ToySpawnService:ReturnToSpawn(toy)
-        else
-            for _, part in partsOf(toy) do
-                part.CanCollide = true
-                part.Massless = false
-            end
-        end
-    end
 end
 
 local function countHelpers(player: Player, root: BasePart): number

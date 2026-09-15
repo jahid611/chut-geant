@@ -19,6 +19,8 @@ local Toys = require(Shared:WaitForChild("Toys"))
 local Tuning = require(Shared:WaitForChild("Tuning"))
 local Zone = require(Shared:WaitForChild("Zone"))
 
+local Physics = require(script.Parent.Parent:WaitForChild("ToyPhysics"))
+local Placement = require(script.Parent.Parent:WaitForChild("ToyPlacement"))
 local WelcomePoints = require(script.Parent.Parent:WaitForChild("WelcomePoints"))
 
 local SPAWN_TAG = "ToySpawn"
@@ -56,15 +58,9 @@ local warnedMissing: { [string]: boolean } = {}
 -- Jouets pieges : garde cote serveur seulement, pour que personne ne puisse les reperer avant de les ramasser.
 local trapped: { [Instance]: boolean } = {}
 
--- Pleine lune (MoonService) : > 1 = plus de jouets rares. Sur un point de rarete imposee, chance de monter d'un
--- cran ; sans rarete imposee, poids des raretes Rare et au-dessus multiplies.
+-- La lune pondère seulement les tirages sans rareté imposée (événements).
+-- Les emplacements ordinaires conservent toujours leur rareté et leur zone.
 local rarityBoost = 1
-local RARITY_STEPS: { [string]: string } = {
-    Common = "Uncommon",
-    Uncommon = "Rare",
-    Rare = "Epic",
-    Epic = "Legendary",
-}
 
 function ToySpawnService:SetRarityBoost(factor: number): ()
     rarityBoost = math.max(factor, 1)
@@ -93,24 +89,13 @@ end
 -- d'apparition), le tirage se limite aux jouets de cette rarete : plus pres du bebe, plus rare.
 -- `kitchen` : point d'apparition de la cuisine (tirage parmi les jouets de la cuisine seulement).
 local function pickToyId(rarity: string?, kitchen: boolean?): string?
-    if rarity and rarityBoost > 1 then
-        local nextRarity: string? = RARITY_STEPS[rarity]
-        if nextRarity and random:NextNumber() < math.min((rarityBoost - 1) * 0.35, 0.8) then
-            rarity = nextRarity
-        end
-    end
     local pool = poolFor(kitchen == true)
-    if #pool == 0 then
-        pool = poolFor(false)
-    end
     local candidates: { Toys.Toy } = {}
+    local models = ServerStorage:FindFirstChild("ToyModels")
     for _, toy in pool do
-        if rarity == nil or toy.rarity == rarity then
+        if (rarity == nil or toy.rarity == rarity) and models and models:FindFirstChild(toy.id) then
             table.insert(candidates, toy)
         end
-    end
-    if #candidates == 0 then
-        candidates = pool
     end
     local total = 0
     for _, toy in candidates do
@@ -138,19 +123,6 @@ local function pickMutation(): string?
     return nil
 end
 
-local function allParts(instance: Instance): { BasePart }
-    local parts: { BasePart } = {}
-    if instance:IsA("BasePart") then
-        table.insert(parts, instance)
-    end
-    for _, descendant in instance:GetDescendants() do
-        if descendant:IsA("BasePart") then
-            table.insert(parts, descendant)
-        end
-    end
-    return parts
-end
-
 local function heightOf(instance: Instance): number
     if instance:IsA("Model") then
         local _, size = instance:GetBoundingBox()
@@ -160,25 +132,9 @@ local function heightOf(instance: Instance): number
     return if primary then primary.Size.Y else 1
 end
 
--- Place le centre de la boite englobante sur cframe (les appelants ajoutent la demi-hauteur). Pas le pivot : celui de
--- certains modeles est loin de la geometrie, le jouet atterrissait alors loin de l'endroit voulu.
-local function pivot(instance: Instance, cframe: CFrame): ()
-    if instance:IsA("Model") then
-        local center = instance:GetBoundingBox()
-        instance:PivotTo(cframe * center:ToObjectSpace(instance:GetPivot()))
-    elseif instance:IsA("BasePart") then
-        instance.CFrame = cframe
-    end
-end
-
--- Pose un jouet au repos sur son point. Il est lache juste au-dessus et tombe par gravite (un jouet pose a la main
--- d'apres sa boite englobante semble leviter), puis il est ancre la ou il s'est arrete.
-local SETTLE_SECONDS = 1.5
-local settling: { [Instance]: {} } = {}
-
 -- Une prise annule aussi l'ancien rappel de pose : il ne doit pas figer un lancer suivant.
 function ToySpawnService:CancelSettling(toy: Instance): ()
-    settling[toy] = nil
+    Physics.Cancel(toy)
 end
 
 local function validPoint(point: BasePart): boolean
@@ -193,7 +149,7 @@ local function cancelPending(point: BasePart): ()
     end
 end
 
-local function scheduleReplacement(point: BasePart): ()
+local function scheduleReplacement(point: BasePart, retrySeconds: number?): ()
     cancelPending(point)
     if not validPoint(point) then
         return
@@ -211,7 +167,7 @@ local function scheduleReplacement(point: BasePart): ()
         then Tuning.KITCHEN_RESPAWN_SECONDS
         elseif point:GetAttribute("PointAccueil") == true then Tuning.WELCOME_RESPAWN_SECONDS
         else Tuning.RESPAWN_SECONDS
-    task.delay(delaySeconds, function()
+    task.delay(retrySeconds or delaySeconds, function()
         if pending[point] ~= token then
             return
         end
@@ -227,7 +183,7 @@ local function forgetToy(toy: Instance): BasePart?
     local point = spawnOf[toy]
     spawnOf[toy] = nil
     trapped[toy] = nil
-    settling[toy] = nil
+    Physics.Cancel(toy)
     local connection = toyConnections[toy]
     toyConnections[toy] = nil
     if connection then
@@ -249,37 +205,6 @@ end
 function ToySpawnService:GetWelcomeOrigin(base: BasePart): Vector3?
     local origin = WelcomePoints.Origin(base)
     return if origin then origin.Position else nil
-end
-
-local function rest(toy: Instance, spawnPart: BasePart): ()
-    local parts = allParts(toy)
-    for _, part in parts do
-        part.CanCollide = true
-        part.Massless = false
-        part.Anchored = true
-    end
-    -- Les modeles Tripo regardent vers -Z (le berceau) : on les tourne vers les bases (+Z), avec un petit angle au
-    -- hasard pour un desordre naturel. Verifie par capture des deux cotes (les joueurs voyaient les jouets de dos).
-    local facing = CFrame.Angles(0, math.rad(180 + random:NextNumber(-35, 35)), 0)
-    pivot(toy, spawnPart.CFrame * CFrame.new(0, spawnPart.Size.Y / 2 + heightOf(toy) / 2 + 1, 0) * facing)
-
-    local token = {}
-    settling[toy] = token
-    for _, part in parts do
-        part.Anchored = false
-    end
-    task.delay(SETTLE_SECONDS, function()
-        -- Un jouet ramasse entre-temps (soude au personnage) ou relance ailleurs garde son etat.
-        if settling[toy] ~= token or toy.Parent == nil or toy:GetAttribute("CarrierUserId") ~= nil then
-            return
-        end
-        settling[toy] = nil
-        for _, part in parts do
-            part.AssemblyLinearVelocity = Vector3.zero
-            part.AssemblyAngularVelocity = Vector3.zero
-            part.Anchored = true
-        end
-    end)
 end
 
 function ToySpawnService:Init(): ()
@@ -324,12 +249,18 @@ function ToySpawnService:SpawnAt(spawnPart: BasePart): Instance?
     if current then
         return current
     end
+    if not Physics.HasCapacity() then
+        scheduleReplacement(spawnPart, random:NextNumber(0.5, 1))
+        return nil
+    end
     local fixed = spawnPart:GetAttribute("ToyId")
     local rarity = spawnPart:GetAttribute("Rarity")
     local kitchenFolder = workspace:FindFirstChild("Cuisine")
     local inKitchen = kitchenFolder ~= nil and spawnPart:IsDescendantOf(kitchenFolder)
     local welcome = spawnPart:GetAttribute("PointAccueil") == true and not inKitchen
-    local toyId = if typeof(fixed) == "string" and Toys.Get(fixed)
+    local toyId = if typeof(rarity) ~= "string"
+            and typeof(fixed) == "string"
+            and Toys.Get(fixed)
         then fixed
         else pickToyId(if typeof(rarity) == "string" then rarity else nil, inKitchen)
     if welcome then
@@ -344,10 +275,18 @@ function ToySpawnService:SpawnAt(spawnPart: BasePart): Instance?
         toyId = if #candidates > 0 then candidates[random:NextInteger(1, #candidates)] else nil
     end
     if toyId == nil then
+        scheduleReplacement(spawnPart)
         return nil
     end
     local toy = ToySpawnService:CloneTemplate(toyId)
     if toy == nil then
+        scheduleReplacement(spawnPart)
+        return nil
+    end
+    local ground, room = Placement.RandomGround(spawnPart, toy)
+    if ground == nil or room == nil then
+        toy:Destroy()
+        scheduleReplacement(spawnPart)
         return nil
     end
     toy.Name = toyId
@@ -363,8 +302,15 @@ function ToySpawnService:SpawnAt(spawnPart: BasePart): Instance?
             ToySpawnService:ApplyRarityLook(toy, def.rarity)
         end
     end
-    rest(toy, spawnPart)
     toy.Parent = liveFolder
+    local facing = CFrame.Angles(0, math.rad(180 + random:NextNumber(-35, 35)), 0)
+    Physics.Launch(
+        toy,
+        CFrame.new(ground + Vector3.new(0, heightOf(toy) / 2 + 1, 0)) * facing,
+        Vector3.zero,
+        room,
+        ground
+    )
     local toyDef = Toys.Get(toyId)
     if toyDef and toyDef.carriers > 1 then
         ToySpawnService:ApplyHeavyBadge(toy, toyDef.carriers)
@@ -388,41 +334,55 @@ function ToySpawnService:SpawnAt(spawnPart: BasePart): Instance?
     return toy
 end
 
--- Renvoie un jouet lache ou confisque sur son point d'origine.
+-- Secours / déconnexion : nouveau tirage dans la zone d'origine, même jouet et même emplacement logique.
 function ToySpawnService:ReturnToSpawn(toy: Instance): ()
     local spawnPart: BasePart? = spawnOf[toy]
     if spawnPart == nil or not validPoint(spawnPart) then
         toy:Destroy()
         return
     end
-    rest(toy, spawnPart)
+    local ground, room = Placement.RandomGround(spawnPart, toy)
+    if ground and room then
+        Physics.Launch(toy, CFrame.new(ground + Vector3.new(0, heightOf(toy) / 2 + 1, 0)), Vector3.zero, room, ground)
+    else
+        -- La destruction libère l'emplacement et programme un nouvel essai sans doubler le quota.
+        toy:Destroy()
+    end
 end
 
 -- Pose un jouet a un endroit libre (lache par un joueur) : il tombe par gravite puis se fige, comme a l'apparition.
 function ToySpawnService:PlaceAt(toy: Instance, cframe: CFrame): ()
-    local parts = allParts(toy)
-    for _, part in parts do
-        part.CanCollide = true
-        part.Massless = false
-        part.Anchored = true
+    local room = Placement.RoomAt(cframe.Position + Vector3.new(0, 3, 0))
+    local ground = if room then Placement.Ground(room, cframe.Position, toy) else nil
+    if room and ground then
+        local center = Vector3.new(ground.X, math.max(cframe.Position.Y, ground.Y) + heightOf(toy) / 2 + 1, ground.Z)
+        Physics.Launch(toy, CFrame.new(center) * cframe.Rotation, Vector3.zero, room, ground)
+    else
+        self:ReturnToSpawn(toy)
     end
-    pivot(toy, cframe * CFrame.new(0, heightOf(toy) / 2 + 1, 0))
-    local token = {}
-    settling[toy] = token
-    for _, part in parts do
-        part.Anchored = false
+end
+
+-- Le centre et la vitesse viennent uniquement des services serveur (lancer / capture).
+function ToySpawnService:Launch(
+    toy: Instance,
+    center: CFrame,
+    velocity: Vector3,
+    fallback: Vector3,
+    done: (() -> ())?
+): boolean
+    local room = Placement.RoomAt(fallback)
+    local ground = if room then Placement.Ground(room, fallback, toy) else nil
+    if ground == nil then
+        local point = spawnOf[toy]
+        if point then
+            ground, room = Placement.RandomGround(point, toy)
+        end
     end
-    task.delay(SETTLE_SECONDS, function()
-        if settling[toy] ~= token or toy.Parent == nil or toy:GetAttribute("CarrierUserId") ~= nil then
-            return
-        end
-        settling[toy] = nil
-        for _, part in parts do
-            part.AssemblyLinearVelocity = Vector3.zero
-            part.AssemblyAngularVelocity = Vector3.zero
-            part.Anchored = true
-        end
-    end)
+    if room == nil or ground == nil then
+        self:ReturnToSpawn(toy)
+        return false
+    end
+    return Physics.Launch(toy, center, velocity, room, ground, done)
 end
 
 -- Contour couleur de la rarete (demande utilisateur : « pas trop flashy, moyen ») : liseré seul, sans remplissage.
@@ -532,6 +492,9 @@ function ToySpawnService:SpawnTemporary(
     end
     toy.Parent = liveFolder
     ToySpawnService:PlaceAt(toy, CFrame.new(position) * CFrame.Angles(0, random:NextNumber(0, math.pi * 2), 0))
+    if toy.Parent == nil then
+        return nil
+    end
     if def and def.carriers > 1 then
         ToySpawnService:ApplyHeavyBadge(toy, def.carriers)
     end

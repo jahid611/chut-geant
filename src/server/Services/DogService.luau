@@ -164,13 +164,13 @@ local function catch(player: Player, root: BasePart): ()
     if Abilities.ConsumeShield(player) then
         return
     end
-    CarryService:Drop(player, true)
     local exit = exitPosition()
     local toward = if exit then exit - root.Position else -root.CFrame.LookVector
     local flat = Vector3.new(toward.X, 0, toward.Z)
     local direction = if flat.Magnitude > 1 then flat.Unit else Vector3.new(0, 0, 1)
     local launch = direction * Tuning.CATCH_LAUNCH_SPEED * Kitchen.LAUNCH_FACTOR
         + Vector3.new(0, Tuning.CATCH_LAUNCH_UP * Kitchen.LAUNCH_FACTOR, 0)
+    CarryService:Drop(player, false, launch)
     local caught = Remotes.Get("Caught") :: RemoteEvent
     caught:FireClient(player, "dog", launch)
     local notice = Remotes.Get("KitchenNotice") :: RemoteEvent
