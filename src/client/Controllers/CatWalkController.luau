@@ -1,167 +1,262 @@
 --!strict
 
---[[
-    CatWalkController
-    Vraie marche du chat de la maison (Workspace.ChatDeLaMaison, evenement « HouseCat » d'EventService). Le modele est
-    un seul maillage avec un squelette anatomique (tools/rig-chat-gpt.py) ; ce controleur anime ses os selon la vitesse
-    reelle du chat (le serveur ne fait que le deplacer).
-
-    Axes : les os importes n'ont pas le meme repere que le chat (sur les pattes, l'axe local Z est lateral). L'axe
-    lateral et l'axe vertical du chat sont donc exprimes dans le repere de chaque os a partir de sa pose de repos, au
-    lieu de supposer un axe (la premiere version tournait les pattes de cote : « il ne marche pas du tout comme un
-    chat », 15/09).
-
-    Anatomie et allure (chat domestique, digitigrade) :
-    - marche a quatre temps en sequence laterale : arriere gauche, avant gauche, arriere droite, avant droite, chaque
-      patte decalee d'un quart de cycle ; appui 65 % du cycle, lever 35 % ;
-    - patte avant : l'epaule balance, le coude et le poignet se replient vers l'arriere pendant le lever ;
-    - patte arriere : la hanche balance, le genou recule, le jarret avance, les doigts se replient ;
-    - la colonne ondule de cote et monte legerement a chaque appui, la tete contre-balance, la queue releve et suit.
-]]
-
+-- Le serveur décide des déplacements et contacts. Cette copie locale rejoue
+-- uniquement les poses fabriquées dans Blender, sans solveur de patte.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local Cycle = require(ReplicatedStorage.Shared.CatWalkCycle)
 local CAT_NAME = "ChatDeLaMaison"
--- distance parcourue par cycle complet, en fraction de la longueur du chat (un chat qui marche : environ 0,75)
-local STRIDE_OF_LENGTH = 0.75
-local MOVING_SPEED = 2
-local SWING = 0.35
+local MAX_DISTANCE = 500
+local FOLLOW_RATE = 18
+local TURN_RATE = 7
 
-type LegDef = { upper: string, lower: string, foot: string, toe: string?, phase: number, front: boolean }
-
-local LEGS: { LegDef } = {
-    { upper = "CuisseG", lower = "JambeG", foot = "MetatarseG", toe = "PatteArriereG", phase = 0, front = false },
-    { upper = "EpauleG", lower = "AvantBrasG", foot = "PatteAvantG", phase = 0.25, front = true },
-    { upper = "CuisseD", lower = "JambeD", foot = "MetatarseD", toe = "PatteArriereD", phase = 0.5, front = false },
-    { upper = "EpauleD", lower = "AvantBrasD", foot = "PatteAvantD", phase = 0.75, front = true },
+type BoneData = {
+    bone: Bone,
+    vertical: Vector3,
+    poses: { CFrame },
 }
-
--- Axes du chat exprimes dans le repere de l'os : lateral (droite du chat) et vertical (haut du chat).
-type BoneAxes = { bone: Bone, lateral: Vector3, vertical: Vector3 }
-
 type State = {
-    model: Model,
-    bones: { [string]: BoneAxes },
-    last: Vector3,
-    cycle: number,
+    source: Model,
+    visual: Model,
+    hidden: { [BasePart]: number },
+    addedConnection: RBXScriptConnection?,
+    bones: { [string]: BoneData },
+    rays: RaycastParams,
+    position: Vector3,
+    velocity: Vector3,
+    rotation: CFrame,
+    lastTarget: Vector3,
+    height: number,
+    length: number,
+    bottom: number,
+    groundOffset: number,
+    phase: number,
     amount: number,
-    speed: number,
-    stride: number,
 }
 
 local CatWalkController = {}
+local state: State? = nil
+local renderConnection: RBXScriptConnection? = nil
+local destroyConnection: RBXScriptConnection? = nil
+local retryAt = 0
 
-local function collectBones(model: Model): { [string]: BoneAxes }
-    local pivot = model:GetPivot()
-    local bones: { [string]: BoneAxes } = {}
-    for _, descendant in model:GetDescendants() do
-        if descendant:IsA("Bone") then
-            descendant.Transform = CFrame.identity
-            local rest = descendant.WorldCFrame.Rotation
-            bones[descendant.Name] = {
-                bone = descendant,
-                lateral = rest:VectorToObjectSpace(pivot.RightVector).Unit,
-                vertical = rest:VectorToObjectSpace(pivot.UpVector).Unit,
-            }
+local function alpha(rate: number, dt: number): number
+    return 1 - math.exp(-rate * dt)
+end
+
+local function cleanup(): ()
+    local current = state
+    state = nil
+    if current then
+        if current.addedConnection then
+            current.addedConnection:Disconnect()
         end
-    end
-    return bones
-end
-
--- position dans le cycle -> balancement (-1 arriere .. 1 avant) et lever (0 au sol .. 1 au plus haut)
-local function legCurve(t: number): (number, number)
-    local u = t % 1
-    if u < SWING then
-        local k = u / SWING
-        return -math.cos(k * math.pi), math.sin(k * math.pi)
-    end
-    local k = (u - SWING) / (1 - SWING)
-    return math.cos(k * math.pi), 0
-end
-
--- pitch : rotation autour de l'axe lateral du chat (positif = l'extremite de l'os part vers l'avant pour un os qui
--- descend) ; yaw : rotation autour de l'axe vertical du chat.
-local function pose(bones: { [string]: BoneAxes }, name: string, pitch: number, yaw: number?): ()
-    local entry = bones[name]
-    if entry then
-        entry.bone.Transform = CFrame.fromAxisAngle(entry.lateral, pitch)
-            * CFrame.fromAxisAngle(entry.vertical, yaw or 0)
-    end
-end
-
-local function animate(state: State): ()
-    local bones, cycle, amount = state.bones, state.cycle, state.amount
-    for _, leg in LEGS do
-        local swing, lift = legCurve(cycle + leg.phase)
-        swing *= amount
-        lift *= amount
-        if leg.front then
-            pose(bones, leg.upper, math.rad(30) * swing)
-            pose(bones, leg.lower, math.rad(-55) * lift)
-            pose(bones, leg.foot, math.rad(-45) * lift)
-        else
-            pose(bones, leg.upper, math.rad(28) * swing)
-            pose(bones, leg.lower, math.rad(-45) * lift)
-            pose(bones, leg.foot, math.rad(50) * lift)
-            if leg.toe then
-                pose(bones, leg.toe, math.rad(-25) * lift)
+        for part, transparency in current.hidden do
+            if part.Parent then
+                part.LocalTransparencyModifier = transparency
             end
         end
+        current.visual:Destroy()
     end
-    local wave = math.sin(cycle * math.pi * 2) * amount
-    local bob = math.sin(cycle * math.pi * 4) * amount
-    pose(bones, "Racine", math.rad(2) * bob, math.rad(5) * wave)
-    pose(bones, "ColonneLombaire", math.rad(-2) * bob, math.rad(-4) * wave)
-    pose(bones, "ColonneThoracique", math.rad(1.5) * bob, math.rad(-3) * wave)
-    pose(bones, "Cou", math.rad(-3) * bob, math.rad(3) * wave)
-    pose(bones, "Tete", math.rad(2) * bob, math.rad(-4) * wave)
-    for index, name in { "Queue1", "Queue2", "Queue3" } do
-        local lag = math.sin((cycle - index * 0.12) * math.pi * 2)
-        pose(bones, name, math.rad(-10) * amount, math.rad(8 + index * 7) * lag * amount)
+end
+
+local function create(source: Model): State?
+    if not source.Archivable then
+        return nil
+    end
+    local visual = source:Clone()
+    visual.Name = "ChatMarcheLocal"
+    for _, descendant in visual:GetDescendants() do
+        if descendant:IsA("LuaSourceContainer") or descendant:IsA("Sound") then
+            descendant:Destroy()
+        elseif descendant:IsA("BasePart") then
+            descendant.Anchored = true
+            descendant.CanCollide = false
+            descendant.CanTouch = false
+            descendant.CanQuery = false
+            descendant.LocalTransparencyModifier = 0
+        elseif descendant:IsA("Bone") then
+            descendant.Transform = CFrame.identity
+        end
+    end
+    local pivot = source:GetPivot()
+    local box, size = source:GetBoundingBox()
+    local bones: { [string]: BoneData } = {}
+    for _, name in Cycle.bones do
+        local found = visual:FindFirstChild(name, true)
+        if found == nil or not found:IsA("Bone") then
+            visual:Destroy()
+            return nil -- Réplication du modèle incomplète : réessayer plus tard.
+        end
+        local rest = pivot:ToObjectSpace(found.WorldCFrame)
+        local poses: { CFrame } = {}
+        for _, frame in Cycle.frames do
+            local rotations: { [string]: Vector3 } = frame.rotations
+            local vector = rotations[name]
+            -- Le vecteur exporté est axe * angle dans (droite, haut, AVANT).
+            -- L'avant Roblox vaut -Z. Changer de base AVANT l'exponentielle.
+            local localAxis = rest:VectorToObjectSpace(Vector3.new(vector.X, vector.Y, -vector.Z))
+            local angle = localAxis.Magnitude
+            table.insert(
+                poses,
+                if angle > 0.000001 then CFrame.fromAxisAngle(localAxis / angle, angle) else CFrame.identity
+            )
+        end
+        bones[name] = { bone = found, vertical = rest:VectorToObjectSpace(Vector3.yAxis), poses = poses }
+    end
+    local rays = RaycastParams.new()
+    rays.FilterType = Enum.RaycastFilterType.Exclude
+    rays.FilterDescendantsInstances = { source, visual }
+    rays.RespectCanCollide = true
+    rays.IgnoreWater = true
+    local current: State = {
+        source = source,
+        visual = visual,
+        hidden = {},
+        addedConnection = nil,
+        bones = bones,
+        rays = rays,
+        position = pivot.Position,
+        velocity = Vector3.zero,
+        rotation = pivot.Rotation,
+        lastTarget = pivot.Position,
+        height = math.max(size.Y, 1),
+        length = math.max(size.X, size.Z, 1),
+        bottom = pivot:PointToObjectSpace(box.Position - Vector3.yAxis * size.Y * 0.5).Y,
+        groundOffset = 0,
+        phase = 0,
+        amount = 0,
+    }
+    visual.Parent = Workspace
+    local function hide(descendant: Instance): ()
+        if descendant:IsA("BasePart") and current.hidden[descendant] == nil then
+            current.hidden[descendant] = descendant.LocalTransparencyModifier
+            descendant.LocalTransparencyModifier = 1
+        end
+    end
+    for _, descendant in source:GetDescendants() do
+        hide(descendant)
+    end
+    current.addedConnection = source.DescendantAdded:Connect(hide)
+    return current
+end
+
+local function update(current: State, target: CFrame, dt: number): ()
+    local previous = current.position
+    -- Solution analytique du ressort critique conservée pour les positions
+    -- serveur reçues à 20 Hz. La phase suit la distance de CETTE copie lissée.
+    local displacement = previous - target.Position
+    local impulse = current.velocity + displacement * FOLLOW_RATE
+    local decay = math.exp(-FOLLOW_RATE * dt)
+    current.position = target.Position + (displacement + impulse * dt) * decay
+    current.velocity = (current.velocity - impulse * FOLLOW_RATE * dt) * decay
+    current.rotation = current.rotation:Lerp(target.Rotation, alpha(TURN_RATE, dt))
+    local delta = current.position - previous
+    local distance = Vector3.new(delta.X, 0, delta.Z).Magnitude
+    current.phase = (current.phase + distance / (Cycle.strideHeight * current.height)) % 1
+    local speed = if dt > 0 then distance / dt else 0
+    local wanted = if speed > 0.8 then 1 else 0
+    current.amount += (wanted - current.amount) * alpha(8, dt)
+    if wanted == 0 and current.amount < 0.0001 then
+        current.amount = 0
+    end
+
+    -- Translation du corps entier pour le tapis (3,3 à 4,3 studs) et le parquet.
+    -- Aucun déplacement d'articulation : un cycle sans IK conserve ses longueurs.
+    -- Le bord du tapis reste un changement de plan, à contrôler en jeu.
+    local bottomY = current.position.Y + current.bottom
+    local range = current.height * 0.12
+    local origin = Vector3.new(current.position.X, bottomY + range, current.position.Z)
+    local hit = Workspace:Raycast(origin, -Vector3.yAxis * range * 2, current.rays)
+    local offset = 0
+    if hit and hit.Normal.Y > 0.85 then
+        offset = math.clamp(hit.Position.Y - bottomY, -range, range)
+    end
+    current.groundOffset += (offset - current.groundOffset) * alpha(14, dt)
+    current.visual:PivotTo(CFrame.new(current.position + Vector3.yAxis * current.groundOffset) * current.rotation)
+
+    local sample = current.phase * Cycle.frameCount
+    local first = math.floor(sample) + 1
+    local second = first % Cycle.frameCount + 1
+    local blend = sample % 1
+    local rootY = Cycle.frames[first].rootY + (Cycle.frames[second].rootY - Cycle.frames[first].rootY) * blend
+    for name, entry in current.bones do
+        local rotation = entry.poses[first]:Lerp(entry.poses[second], blend)
+        local rest = CFrame.identity
+        local transform = rest:Lerp(rotation, current.amount)
+        if name == "Racine" then
+            transform = CFrame.new(entry.vertical * (rootY * current.height * current.amount)) * transform
+        end
+        entry.bone.Transform = transform
     end
 end
 
 function CatWalkController:Init(): () end
 
+function CatWalkController:Stop(): ()
+    if renderConnection then
+        renderConnection:Disconnect()
+        renderConnection = nil
+    end
+    if destroyConnection then
+        destroyConnection:Disconnect()
+        destroyConnection = nil
+    end
+    cleanup()
+    retryAt = 0
+end
+
 function CatWalkController:Start(): ()
-    local state: State? = nil
-    RunService.RenderStepped:Connect(function(dt: number)
+    if renderConnection then
+        return
+    end
+    destroyConnection = script.Destroying:Connect(function()
+        self:Stop()
+    end)
+    renderConnection = RunService.RenderStepped:Connect(function(frameDt: number)
+        -- Le ralenti agit sur le suivi, jamais une seconde fois sur la distance.
+        local slow = Workspace:GetAttribute("ChatRalenti")
+        local factor = if typeof(slow) == "number" and slow >= 0 and slow < math.huge then slow else 1
+        local dt = math.clamp(frameDt * factor, 0, 0.1)
         local found = Workspace:FindFirstChild(CAT_NAME)
-        if found == nil or not found:IsA("Model") then
-            state = nil
+        local camera = Workspace.CurrentCamera
+        if found == nil or not found:IsA("Model") or camera == nil then
+            cleanup()
+            return
+        end
+        local target = found:GetPivot()
+        if (camera.CFrame.Position - target.Position).Magnitude > MAX_DISTANCE then
+            cleanup()
+            retryAt = os.clock() + 0.25
             return
         end
         local current = state
-        if current == nil or current.model ~= found then
-            local _, size = found:GetBoundingBox()
-            current = {
-                model = found,
-                bones = collectBones(found),
-                last = found:GetPivot().Position,
-                cycle = 0,
-                amount = 0,
-                speed = 0,
-                stride = math.max(math.max(size.X, size.Z) * STRIDE_OF_LENGTH, 1),
-            }
+        if
+            current
+            and (
+                current.source ~= found
+                or current.visual.Parent == nil
+                or (target.Position - current.lastTarget).Magnitude > current.length
+                or frameDt > 0.25
+            )
+        then
+            cleanup()
+            current = nil
+        end
+        if current == nil then
+            if os.clock() < retryAt then
+                return
+            end
+            current = create(found)
             state = current
+            retryAt = os.clock() + 0.5
         end
-        if current == nil or next(current.bones) == nil then
-            return
+        if current then
+            current.lastTarget = target.Position
+            update(current, target, dt)
         end
-        local position = found:GetPivot().Position
-        local moved = Vector3.new(position.X - current.last.X, 0, position.Z - current.last.Z).Magnitude
-        current.last = position
-        -- le serveur deplace le chat 20 fois par seconde : vitesse lissee, sinon la marche se coupait une image sur deux
-        local instant = if dt > 0 then moved / dt else 0
-        current.speed += (instant - current.speed) * math.min(dt * 4, 1)
-        local target = if current.speed > MOVING_SPEED then 1 else 0
-        current.amount += (target - current.amount) * math.min(dt * 5, 1)
-        -- un grand saut (teleportation, respawn du modele) ne fait pas tourner les pattes a toute vitesse
-        if moved < current.stride then
-            current.cycle = (current.cycle + moved / current.stride) % 1
-        end
-        animate(current)
     end)
 end
 
