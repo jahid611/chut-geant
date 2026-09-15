@@ -18,6 +18,7 @@
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
@@ -52,8 +53,12 @@ type Kind = {
     imageId: string?,
 }
 
--- Image « femme jumpscare » de l'utilisateur, televersee sur Roblox (rbxassetid://...) ; vide tant qu'elle ne l'est pas.
-local MOM_IMAGE_ID = "rbxassetid://97997221493943"
+-- Maman en colere en 3D (modele Meshy de l'utilisateur), chargee dans Studio sous
+-- ReplicatedStorage.ScreamerModels.MamanColere, pivot a l'origine, visage vers -Z (planche des 4 vues du 15/09).
+-- Elle remplace l'image « femme jumpscare » (97997221493943). MOM_ANGRY_YAW tourne le modele si son visage ne regarde
+-- pas vers -Z ; MOM_ANGRY_HEAD = hauteur des yeux au-dessus du centre, en fraction de la hauteur du buste.
+local MOM_ANGRY_YAW = 0
+local MOM_ANGRY_HEAD = 0.2
 -- Proportions de l'image (largeur / hauteur) et hauteur du visage dans l'image (0 = haut) : le zoom se fait sur lui.
 -- (image recadree en carre de 1024 px sur le visage, assets/concepts/drive/maman/maman-jumpscare-visage.png)
 local MOM_IMAGE_RATIO = 1
@@ -104,6 +109,29 @@ local function buildBaby(viewport: ViewportFrame): Head?
     return if head then { point = head.point, frame = head.frame, unit = head.size.Y } else nil
 end
 
+local function angryMomTemplate(): Model?
+    local folder = ReplicatedStorage:FindFirstChild("ScreamerModels")
+    local model = if folder then folder:FindFirstChild("MamanColere") else nil
+    return if model and model:IsA("Model") then model else nil
+end
+
+-- Maman en colere en 3D ; sans le modele, retombe sur la maman de la porte.
+local function buildAngryMom(viewport: ViewportFrame): Head?
+    local template = angryMomTemplate()
+    if template == nil then
+        return buildMom(viewport)
+    end
+    local clone = template:Clone()
+    clone:PivotTo(CFrame.Angles(0, math.rad(MOM_ANGRY_YAW), 0))
+    clone.Parent = viewport
+    local center, size = clone:GetBoundingBox()
+    return {
+        point = center.Position + Vector3.yAxis * size.Y * MOM_ANGRY_HEAD,
+        frame = CFrame.new(center.Position),
+        unit = size.Y,
+    }
+end
+
 local KINDS: { [string]: Kind } = {
     -- 0,35 ne montrait plus que les yeux (capture screamer-moved du 15/09) : le visage entier doit rester lisible.
     baby = {
@@ -115,15 +143,16 @@ local KINDS: { [string]: Kind } = {
         ambient = Color3.fromRGB(175, 165, 185),
         build = buildBaby,
     },
+    -- near 0,2 collait la camera a la peau du buste (capture du 15/09) ; 0,35 encore trop pres pour l'utilisateur
+    -- (« eloigne-la un peu ») : 0,6 montre toute la tete et le haut des epaules a l'impact.
     mom = {
-        imageId = MOM_IMAGE_ID,
         far = 1.8,
-        near = 0.2,
+        near = 0.6,
         soundId = "rbxassetid://9114399356",
         volume = 0.6,
         speed = 0.9,
         ambient = Color3.fromRGB(185, 160, 150),
-        build = buildMom,
+        build = buildAngryMom,
     },
 }
 
@@ -131,14 +160,14 @@ local Screamer = {}
 
 local playing = false
 
--- Image de maman chargee des le demarrage : au premier jumpscare, le visage n'apparaissait pas encore (capture du
--- 15/09, fond noir seul pendant l'approche).
+-- Maman en colere chargee des le demarrage : au premier jumpscare, l'ancienne image n'apparaissait pas encore et la
+-- texture du modele arrivait en retard (buste rose uni, capture du 15/09).
 task.spawn(function()
-    if MOM_IMAGE_ID ~= "" then
-        local preload = Instance.new("ImageLabel")
-        preload.Image = MOM_IMAGE_ID
+    local folder = ReplicatedStorage:WaitForChild("ScreamerModels", 30)
+    local model = if folder then folder:WaitForChild("MamanColere", 30) else nil
+    if model then
         pcall(function()
-            game:GetService("ContentProvider"):PreloadAsync({ preload })
+            game:GetService("ContentProvider"):PreloadAsync({ model })
         end)
     end
 end)

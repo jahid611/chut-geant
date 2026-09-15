@@ -659,8 +659,11 @@ Avancement à 04h30 :
   Coffres était vide sur la capture alors que l'image `100871723457501` se charge (`AssetFetchStatus.Success`) :
   l'icône (coffre bleu plein de jouets, clé `ongletCoffres`) n'était sans doute pas encore chargée à la première
   ouverture ; à revérifier.
-- **Maman en colère en 3D essayée puis refusée** : le modèle Meshy (asset `122981112451750`, chargé dans
-  `ReplicatedStorage.ScreamerModels.MamanColere`) marchait en jeu, mais l'utilisateur le trouve bien moins beau que
-  l'image. Le jumpscare garde l'image « femme jumpscare » (`97997221493943`).
+- **Jumpscare de maman en 3D haute définition** : le premier modèle Meshy (9 500 triangles, asset
+  `122981112451750`) montrait trous et coutures de texture déchirées en gros plan, alors qu'il était propre de loin
+  (même rendu avec ou sans CanvasGroup). Refait par `tools/decimate-split-glb.py` : 48 000 triangles en 8 morceaux,
+  asset `84576689767246`, chargé dans `ReplicatedStorage.ScreamerModels.MamanColere` par
+  `tools/scene/charger-maman-colere.luau`. Caméra arrêtée à 0,6 de la hauteur du buste (« éloigne-la un peu »).
+  Vu en jeu, propre. L'image « femme jumpscare » (`97997221493943`) n'est plus utilisée.
 - À corriger : le bandeau d'événement (« Panne de veilleuse ! ») passe sur le titre de la boutique ; avertissement
   « ToyModels.Pacifier absent » au démarrage alors que le modèle existe (ordre de chargement ?).
