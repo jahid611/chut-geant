@@ -37,6 +37,8 @@ tools/gen3d/*.log
 *.log.err
 # Dossiers de relecture GPT (tools/gpt-review.mjs) : diffs et reponses, recalcules a chaque passage.
 tools/reviews/
+# Verrou Studio pris pendant les captures et les passages de GPT : temporaire, jamais versionne.
+tools/scene/.camera-lock
 
 # Binaires generes lourds (~1,5 Go, fichiers de plus de 50 Mo) : modeles 3D, concepts, textures, captures et videos
 # de test. Ils restent sur le PC ; les registres d identifiants Roblox (JSON) et les icones d interface sont gardes.

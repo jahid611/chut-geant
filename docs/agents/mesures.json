@@ -1,0 +1,13 @@
+[
+  {
+    "date": "2026-09-15T11:06:12.185Z",
+    "tache": "GPT peut coder aussi : implémentation par GPT, relecture croisée, répartition mesurée des tâches",
+    "type": "non-classe",
+    "implementeur": "claude",
+    "relecteur": "gpt",
+    "iterations": 4,
+    "remarques_graves": 3,
+    "playtests_rates": 0,
+    "duree_min": 33
+  }
+]

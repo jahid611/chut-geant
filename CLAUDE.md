@@ -7,8 +7,12 @@ Claude.
 
 ## Rôle
 
-Claude **implémente** : il analyse `docs/PLAN.md`, inspecte Studio par le pont MCP (`node tools/mcpd.mjs`), code,
-lance les playtests, corrige, vérifie (`lune run check`) et commit. GPT relit ; l'utilisateur décide.
+Claude est **implémenteur ou relecteur** selon la tâche (`--by` de l'arbitre). Implémenteur : il analyse
+`docs/PLAN.md`, inspecte Studio par le pont MCP (`node tools/mcpd.mjs`), code, lance les playtests, corrige et vérifie
+(`lune run check`). Relecteur du code de GPT : il lit le diff et les fichiers réels (jamais le seul résumé de GPT),
+vérifie dans Studio quand c'est utile, puis rend ses remarques au schéma `tools/gpt-review.schema.json` par
+`claude-review start` / `claude-review submit`, avec la même exigence que GPT : fichier, ligne, scénario concret,
+correction. Dans les deux cas, Claude fait le commit et le push après la clôture ; l'utilisateur décide.
 
 ## Dans la boucle Claude ↔ GPT
 

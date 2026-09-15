@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["resume", "fichiers_modifies", "verifications", "reste_a_faire", "reponses"],
+  "properties": {
+    "resume": {
+      "type": "string",
+      "description": "Ce qui a ete fait, en francais ; en mode plan, le plan complet en markdown"
+    },
+    "fichiers_modifies": {
+      "type": "array",
+      "description": "Liste exacte des fichiers modifies ou crees (chemins relatifs au depot), vide en mode plan",
+      "items": { "type": "string" }
+    },
+    "verifications": {
+      "type": "array",
+      "description": "Verifications reellement lancees et leur resultat (ex. lune run check, playtest)",
+      "items": { "type": "string" }
+    },
+    "reste_a_faire": {
+      "type": "array",
+      "description": "Ce qui n'a pas pu etre fait ou verifie",
+      "items": { "type": "string" }
+    },
+    "reponses": {
+      "type": "array",
+      "description": "Une reponse par remarque ouverte fournie (vide s'il n'y en a pas)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "decision", "explication"],
+        "properties": {
+          "id": { "type": "string", "description": "Identifiant exact de la remarque" },
+          "decision": { "type": "string", "enum": ["acceptee", "rejetee"] },
+          "explication": { "type": "string", "description": "Correction faite, ou raison verifiee du rejet" }
+        }
+      }
+    }
+  }
+}

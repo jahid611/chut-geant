@@ -15,8 +15,9 @@ est en **français**.
 | Rôle | Agent | Responsabilité |
 |------|-------|----------------|
 | Décide | l'utilisateur | demandes, priorités, validation, publication |
-| Implémente | Claude | analyse PLAN.md, inspecte Studio, code, playtest, corrige, commit |
-| Relit | GPT | cherche bugs, exploits et écarts d'architecture ; propose des corrections ; ne modifie rien |
+| Implémente | Claude ou GPT, choisi par tâche | plan, code, playtest, corrections ; ne relit jamais son propre code |
+| Relit | l'autre modèle | critique du plan, relecture du code, confirmation des corrections |
+| Arbitre | `tools/orchestrator.mjs`, sans IA | état de la tâche, preuves objectives, clôture, mesures |
 
 ## Architecture
 
@@ -100,7 +101,9 @@ CHECK, EQUIPE), qui défile dans le terminal : l'utilisateur suit sans répondre
 Claude Code reste l'interface de l'utilisateur : quand il demande une fonctionnalité à Claude, Claude pilote la
 boucle par ces commandes.
 
-1. **[ORCHESTRATEUR]** `node tools/orchestrator.mjs start "<demande>"` (10 itérations au plus, `--max` pour changer).
+1. **[ORCHESTRATEUR]** `node tools/orchestrator.mjs start "<demande>" --type <gameplay|ui|serveur|scene|outillage>
+   --by <claude|gpt|auto>` (10 itérations au plus, `--max` pour changer). Les étapes ci-dessous décrivent Claude
+   implémenteur et GPT relecteur ; l'inverse est décrit dans « Implémentation par GPT et répartition mesurée ».
 2. **[CLAUDE] plan** : lit `docs/PLAN.md`, le code et Studio, écrit son plan d'architecture (fichiers, services,
    remotes, sauvegarde), puis `node tools/orchestrator.mjs plan <plan.md>`.
    **[GPT]** critique ce plan (sauvegarde, remotes, exploits, doublons avec l'existant).
@@ -133,6 +136,43 @@ Règles d'arbitrage :
 - au-delà de la limite d'itérations, l'arbitre s'arrête et l'utilisateur tranche.
 `node tools/orchestrator.mjs status` affiche l'état à tout moment. Les appels bas niveau de GPT restent possibles
 directement par `tools/gpt-review.mjs` (plan, initial, diagnostic, final).
+
+## Implémentation par GPT et répartition mesurée
+
+GPT peut implémenter : Codex tourne alors en écriture dans le dépôt (`-s workspace-write` avec
+`windows.sandbox="unelevated"` ; sans cette option, Codex reste en lecture seule sous Windows). Claude relit son travail.
+
+- `node tools/orchestrator.mjs plan` : GPT écrit le plan en lecture seule (`-s read-only`), avec l'index du projet et
+  le code prioritaire pour le type de tâche dans le message (400 Ko au plus), le reste de `src/` se lisant dans Studio
+  par `get_script_source` ; Claude le critique par
+  `claude-review start --mode plan` puis `claude-review submit <remarques.json>` (même schéma que GPT,
+  `tools/gpt-review.schema.json`).
+- `node tools/orchestrator.mjs implement` : GPT implémente le plan retenu et répond aux remarques ouvertes.
+- `test start`, `test --ok|--fail` et `check` : comme lorsque Claude implémente.
+- Relecture par Claude : `claude-review start` (empreinte notée) puis `claude-review submit <fichier>`, refusée si le
+  code a changé entre les deux. Claude lit le diff et les fichiers réels, jamais le seul résumé de GPT.
+- `node tools/orchestrator.mjs answer` : GPT corrige et répond aux remarques de Claude.
+- `done`, le commit et le push restent faits par Claude après la clôture ; GPT ne committe jamais.
+
+Garde-fous calculés après chaque passage de GPT (`tools/gpt-implement.mjs`, `tools/protected-paths.mjs`,
+`tools/text-checks.mjs`), jamais déclarés par GPT :
+- instantané, avant le passage, des fichiers protégés (`.env*`, place `.rbxl*`, métadonnées `.git` hors objets), hors
+  dépôt et hors dossiers inscriptibles par le sandbox ; après le passage, restauration de l'état exact (contenu d'avant,
+  suppression seulement d'un fichier créé pendant le passage), jamais depuis une copie altérée ;
+- HEAD et index Git (comparaison logique) inchangés ;
+- gros dossiers d'assets locaux et état de l'arbitre : inventaire taille et date de modification (hacher 1,5 Go à
+  chaque passage serait trop long) ;
+- accents abîmés introduits dans les fichiers texte changés ;
+- fichiers réellement changés pendant le passage comparés à ceux que GPT déclare.
+Chaque écart devient une remarque de l'arbitre (bloquante pour les chemins protégés, Git et les accents), que le
+relecteur doit confirmer résolue. `done` revérifie aussi les accents abîmés. Pendant un passage de GPT, le verrou Studio
+`tools/scene/.camera-lock` est tenu.
+
+Répartition : à chaque clôture, l'arbitre ajoute une mesure à `docs/agents/mesures.json` (type, implémenteur,
+itérations, remarques bloquantes ou majeures reçues, playtests ratés, durée). `node tools/orchestrator.mjs stats`
+affiche le tableau. Avec `--by auto`, l'arbitre alterne tant que chaque modèle a moins de 3 tâches mesurées pour ce
+type, puis confie le type au meilleur score (moins de remarques graves et de playtests ratés par tâche, puis moins
+d'itérations). L'utilisateur peut toujours imposer `--by claude` ou `--by gpt`.
 
 ## Vérification
 
