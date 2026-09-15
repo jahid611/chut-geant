@@ -643,7 +643,15 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
     local start = chest + aim * distance
     local overlap = OverlapParams.new()
     overlap.RespectCanCollide = true
-    overlap.FilterDescendantsInstances = ignore
+    -- La surface sous le joueur (tapis, parquet) ne bloque pas le départ : GetPartBoundsInBox compare des boîtes
+    -- englobantes, et celle du tapis (MeshPart) dépasse sa surface réelle ; tout lancer au-dessus du tapis renvoyait
+    -- le jouet à son point d'apparition (mesuré en jeu le 15/09). Le bas du jouet est déjà au-dessus de ce sol.
+    local overlapIgnore = table.clone(ignore)
+    local support = workspace:Raycast(root.Position + Vector3.new(0, 0.5, 0), Vector3.new(0, -120, 0), params)
+    if support then
+        table.insert(overlapIgnore, support.Instance)
+    end
+    overlap.FilterDescendantsInstances = overlapIgnore
     -- Un jouet réagrandi ne rentre pas toujours entre le personnage et le mur.
     if
         distance < radius + root.Size.Z / 2
