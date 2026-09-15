@@ -59,7 +59,8 @@ local Tuning = {
     -- Geant
     GIANT_WAKE_SECONDS = 2,
     -- 10 -> 14 : la chasse est devenue une course-poursuite (HandChaseService), il faut le temps de fuir.
-    GIANT_HUNT_SECONDS = 14,
+    -- 14 -> 7 (15/09) : « 15 secondes c'est beaucoup trop long » (utilisateur), reveil + chasse = 9 s.
+    GIANT_HUNT_SECONDS = 7,
     -- Main geante (HandChaseService) : pendant une chasse de reveil, une ombre de main poursuit un joueur de la
     -- chambre au lieu de la regle « bouger = attrape » (false = ancienne regle).
     HAND_CHASE_ENABLED = true,
