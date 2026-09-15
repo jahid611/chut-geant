@@ -20,6 +20,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Abilities = require(Shared:WaitForChild("Abilities"))
+local NoiseMath = require(Shared:WaitForChild("NoiseMath"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Toys = require(Shared:WaitForChild("Toys"))
 local Tuning = require(Shared:WaitForChild("Tuning"))
@@ -38,6 +39,7 @@ local noise = 0
 local frozen = false
 local lastSent = -1
 local sinceBroadcast = 0
+local runSeconds: { [Player]: number } = {}
 
 local function broadcast(): ()
     lastSent = noise
@@ -79,8 +81,7 @@ local function gainFactor(): number
     return factor
 end
 
-function NoiseService:Add(amount: number): ()
-    amount *= gainFactor()
+local function addEffective(amount: number): ()
     if frozen or amount <= 0 then
         return
     end
@@ -90,6 +91,10 @@ function NoiseService:Add(amount: number): ()
         broadcast()
         maxedEvent:Fire()
     end
+end
+
+function NoiseService:Add(amount: number): ()
+    addEffective(amount * gainFactor())
 end
 
 -- Retire du bruit (Tetine magique). Sans effet quand la jauge est pleine et le bebe deja reveille. Vrai si la
@@ -110,32 +115,37 @@ function NoiseService:Reset(): ()
 end
 
 local function movementNoise(dt: number): number
-    local gain = 0
-    for _, player in Players:GetPlayers() do
+    local players = Players:GetPlayers()
+    local runners: { NoiseMath.Runner } = {}
+    for _, player in players do
         local character = player.Character
         local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
-        if root and root:IsA("BasePart") and NoiseService:IsInRoom(root.Position) then
+        local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+        local speed = 0
+        if
+            root
+            and root:IsA("BasePart")
+            and humanoid
+            and humanoid.Health > 0
+            and NoiseService:IsInRoom(root.Position)
+        then
             local velocity = root.AssemblyLinearVelocity
-            local speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
-            if speed > Tuning.SNEAK_SPEED then
-                local fraction = math.clamp(
-                    (speed - Tuning.SNEAK_SPEED) / math.max(Tuning.WALK_SPEED - Tuning.SNEAK_SPEED, 1),
-                    0,
-                    1.5
-                )
-                local toy = CarryService:GetCarried(player)
-                local toyId = if toy then toy:GetAttribute("ToyId") else nil
-                local def = if typeof(toyId) == "string" then Toys.Get(toyId) else nil
-                -- Chaussons silencieux (boutique, 5 niveaux) : -10 % de bruit par niveau.
-                local quiet = math.max(1 - Abilities.QUIET_PER_LEVEL * Abilities.Level(player, "QuietSlippers"), 0.1)
-                -- Furie : on court tres vite, et ca s'entend.
-                local furyUntil = player:GetAttribute("FuryUntil")
-                local fury = if typeof(furyUntil) == "number" and furyUntil > workspace:GetServerTimeNow()
-                    then Tuning.FURY_NOISE_MULTIPLIER
-                    else 1
-                gain += fraction * Tuning.NOISE_MOVE_PER_SECOND * (if def then def.carriers else 1) * quiet * fury * dt
-            end
+            speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
         end
+        local toy = CarryService:GetCarried(player)
+        local toyId = if toy then toy:GetAttribute("ToyId") else nil
+        local def = if typeof(toyId) == "string" then Toys.Get(toyId) else nil
+        table.insert(runners, {
+            speed = speed,
+            carriers = if def then def.carriers else 1,
+            quiet = math.max(1 - Abilities.QUIET_PER_LEVEL * Abilities.Level(player, "QuietSlippers"), 0.1),
+            fury = if Abilities.IsActive(player, "Fury") then Tuning.FURY_NOISE_MULTIPLIER else 1,
+            runSeconds = runSeconds[player] or 0,
+        })
+    end
+    local gain, durations = NoiseMath.Movement(runners, dt, Tuning, gainFactor())
+    for i, player in players do
+        runSeconds[player] = durations[i]
     end
     return gain
 end
@@ -163,22 +173,29 @@ function NoiseService:Start(): ()
         end)
     end
     local function onPlayer(player: Player): ()
+        player.CharacterRemoving:Connect(function()
+            runSeconds[player] = nil
+        end)
         player.CharacterAdded:Connect(onCharacter)
         if player.Character then
             task.spawn(onCharacter, player.Character)
         end
-        (Remotes.Get("NoiseState") :: RemoteEvent):FireClient(player, noise, Tuning.NOISE_MAX)
+        local remote = Remotes.Get("NoiseState") :: RemoteEvent
+        remote:FireClient(player, noise, Tuning.NOISE_MAX)
     end
     Players.PlayerAdded:Connect(onPlayer)
+    Players.PlayerRemoving:Connect(function(player: Player)
+        runSeconds[player] = nil
+    end)
     for _, player in Players:GetPlayers() do
         onPlayer(player)
     end
 
     RunService.Heartbeat:Connect(function(dt: number)
+        local gain = movementNoise(dt)
         if not frozen then
-            local gain = movementNoise(dt)
             if gain > 0 then
-                self:Add(gain)
+                addEffective(gain)
             else
                 noise = math.max(noise - Tuning.NOISE_DECAY_PER_SECOND * dt, 0)
             end

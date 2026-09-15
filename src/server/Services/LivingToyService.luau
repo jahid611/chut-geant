@@ -212,7 +212,7 @@ local function forget(toy: Model): ()
 end
 
 local function makeLiving(toy: Instance): ()
-    if not toy:IsA("Model") or toy:GetAttribute("Temporaire") then
+    if not toy:IsA("Model") or toy:GetAttribute("Temporaire") or toy:GetAttribute("PointAccueil") then
         return
     end
     local toyId = toy:GetAttribute("ToyId")
@@ -225,6 +225,9 @@ end
 
 -- Rend un jouet vivant tout de suite (tests : LivingToyService:Awaken(workspace.ToysLive.<jouet>)).
 function LivingToyService:Awaken(toy: Model): boolean
+    if toy:GetAttribute("PointAccueil") then
+        return false
+    end
     if living[toy] then
         return true
     end

@@ -20,5 +20,16 @@
     "remarques_graves": 0,
     "playtests_rates": 0,
     "duree_min": 19
+  },
+  {
+    "date": "2026-09-15T12:39:15.608Z",
+    "tache": "Rythme de la boucle de vol (retour utilisateur : le jeu est bien mais ennuyant). Objectif : plus d'action et de décisions, moins de temps mort, sans casser la tension du bébé. État mesuré dans le code : chambre 800 x 640 studs, bases à z = 290, berceau à z = -150 ; communs à environ 120-150 studs des bases (~8 s de marche à 17 studs/s), épiques vers z = -150..-205 (~30 s de marche, ~50 s en se faufilant à 9,5) ; jauge : +13/s à pleine vitesse, -5/s, donc pleine en ~12 s de marche continue ; un jouet volé réapparaît après 20 s (Tuning.RESPAWN_SECONDS) ; Furie (R) recharge 60 s ; événements toutes les 40-75 s ; un joueur attrapé est propulsé et étourdi 1,4 s et perd son jouet. Pistes à trancher dans le plan (chiffres à justifier) : chambre toujours bien garnie (réapparition plus rapide), premier vol en quelques secondes pour un nouveau joueur, retour avec un jouet qui devienne le moment tendu (prime de livraison rapide sans réveil, ou autre idée), sprint plus accessible mais bruyant, jauge qui pardonne les petites prises de risque et punit la course longue, événements plus fréquents ou mini-objectifs entre deux événements. Tout se règle côté serveur (anti-triche), valeurs dans Shared/Tuning, texte français sans emoji, pas de décor en pièces de base.",
+    "type": "gameplay",
+    "implementeur": "gpt",
+    "relecteur": "claude",
+    "iterations": 2,
+    "remarques_graves": 2,
+    "playtests_rates": 0,
+    "duree_min": 26
   }
 ]

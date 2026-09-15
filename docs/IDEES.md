@@ -4,6 +4,13 @@ Carnet vivant tenu pendant les sessions autonomes : idées à moi, notées au fi
 réalisées. « En cours » = un agent y travaille ; « Fait » = codé et vérifié en jeu.
 
 ## En cours (nuit du 15-16/09)
+- **Rythme de la boucle, lot 1** : réapparition chambre 8 s, Furie 3 s / recharge 20 s / prix 750,
+  rampe de bruit 8→13, décroissance 8/s, contributions secondaires à 50 %. Points communs d'accueil créés
+  au démarrage devant les sorties réelles, prioritaires pour le tutoriel. Calcul testé hors Studio : saturation
+  solo 9,81 s, trois joueurs simulés 5,78 s ; pic à trois sur deux rafales de 3 s = 72 points.
+  **Pas encore vérifié en jeu** : MCP refusé par la politique d'approbation. Vérifier les 12 points, captures,
+  trajets des six bases, délai réel de remplacement chambre/cuisine et achat de Furie. Marche réelle et
+  multijoueur : **à tester à la main par l'utilisateur**.
 - **Jouets maudits** : le couinement à chaque pas et le bonus au dépôt restent à tester à la main. Constat du banc
   de test (16/09, 04h) : `Humanoid:Move` lancé par script ne fait pas avancer le personnage (0,4 stud en 3 s,
   direction côté client restée à 0) ; en revanche la direction de marche remonte bien au serveur (1,00), donc la
@@ -13,6 +20,11 @@ réalisées. « En cours » = un agent y travaille ; « Fait » = codé et véri
   Studio ; probablement une requête gardée en cache par la session Studio, à revérifier après un redémarrage.
 
 ## Idées à faire (priorité haute d'abord)
+- **Retour éclair — tâche suivante, plan séparé** : prime de retour facultative. Étudier le contrôle simplifié
+  proposé par Claude (distance prise → extérieur de base, marge fixe d'intérieur et durée minimale à vitesse
+  maximale autorisée, Furie comprise ×1,25), sans échantillonnage ni jeton de porte. Les volumes `Base` sont
+  déplacés dans les intérieurs : utiliser la sortie réelle, pas leur position à y = −900. Revoir l'autorité et
+  les cas de propulsion/trampoline/ventouse dans ce plan avant implémentation.
 1. **Cuisine** (Nuit 3) : 2e pièce avec un géant différent (le chien de la famille qui dort sous la table ?),
    jouets plus rares (dinette, fruits), plus bruyante (carrelage qui résonne).
 2. **Fil d'actualité du serveur** en haut à droite : « Léa a volé une Console dorée ! », « Tom s'est fait

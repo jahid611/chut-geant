@@ -4,6 +4,41 @@ Lire ce fichier en premier à chaque reprise de session. Cocher au fur et à mes
 
 ## Concept
 
+### Rythme de la boucle — premier lot (15/09/2026, validation en jeu en attente)
+
+- Chambre : remplacement 8 s après dépôt, sauf les points d'accueil à 25 s pour limiter la boucle de combo
+  sans risque (20 s en cuisine), toujours un exemplaire par point.
+- Furie : 3 s, recharge 20 s depuis activation, +27 studs/s, prix 750 tétines ; achats existants conservés.
+- Bruit de la chambre : 8 points/s les 3 premières secondes, rampe jusqu'à 13 à 8 s ; récupération de la durée
+  de course à 2 s/s sous le seuil bruyant. La plus forte contribution compte entièrement, les autres à 50 %.
+  Décroissance au calme : 8 points/s, y compris sous boîte à musique (gain effectif nul). Chien : débit conservé à 13.
+- Deux points d'accueil communs légers par base visés à 35–55 studs de la sortie, créés au démarrage par
+  `ToySpawnService` et `WelcomePoints`, sans reconstruction. Sol/tapis vérifiés par rayon ; meubles, zones sûres,
+  portes et proximité d'un autre point refusés. Aucun piège, mutation, promotion lunaire, jouet vivant ou maudit.
+- Les recettes déplacent les volumes `Base` dans les intérieurs : l'origine extérieure vient donc de la
+  `Destination` de l'unique porte de sortie du volume `InteriorZone` contenant la base. Une association ambiguë
+  est refusée. Le tutoriel privilégie les jouets d'accueil associés à sa base ; pas d'apparition spéciale du joueur.
+- La prime « Retour éclair », son interface et ses contrats de portage sont reportés dans une tâche dédiée.
+  Les intervalles d'événements restent à 40–75 s.
+
+Mesures déterministes (`lune run test-noise`, départ à zéro, vitesse 17, sans équipement ni événement) :
+
+| Scénario | Avant | Après |
+|---|---:|---:|
+| Solo, marche continue jusqu'à 100 | 7,70 s | 9,81 s |
+| Trois joueurs simulés, marche continue jusqu'à 100 | 2,57 s | 5,78 s |
+| Solo, pic sur 12 s : 3 s marche / 3 s calme | 63 | 24 |
+| Trois joueurs simulés, même scénario | 100 | 72 |
+
+Ces simulations vérifient le calcul, pas la sensation en jeu. L'accès MCP Studio a été refusé par la politique
+d'approbation de l'environnement : aucun playtest ni capture réalisés pour ce lot. Avant validation par Claude :
+compter et capturer les 12 points dans les six bases, contrôler sol/collisions/trajets, mesurer la première prise
+et vérifier réellement les remplacements à 8/25/20 s (chambre/accueil/cuisine), les captures, la Furie,
+la boutique et la cuisine.
+Marche réelle, ressenti et multijoueur : **à tester à la main par l'utilisateur**.
+
+### Boucle générale
+
 On est minuscule. **Un bébé géant dort dans son berceau** (choix de l'utilisateur le 14/09/2026 : tétine,
 hochet, doudou, pleurs au réveil). **Look retenu : bébé D** (`assets/concepts/bebe/bebe-d.png`) — grenouillère
 dino verte à capuche, bras en croix, bouche ouverte, joues rondes. Le bébé est découpé en pièces animées par tweens, pas riggé : corps sous la

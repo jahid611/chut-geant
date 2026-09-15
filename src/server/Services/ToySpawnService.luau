@@ -19,6 +19,8 @@ local Toys = require(Shared:WaitForChild("Toys"))
 local Tuning = require(Shared:WaitForChild("Tuning"))
 local Zone = require(Shared:WaitForChild("Zone"))
 
+local WelcomePoints = require(script.Parent.Parent:WaitForChild("WelcomePoints"))
+
 local SPAWN_TAG = "ToySpawn"
 local TOY_TAG = "Toy"
 
@@ -46,6 +48,10 @@ local random = Random.new()
 local liveFolder: Folder? = nil
 local spawnOf: { [Instance]: BasePart } = {}
 local occupied: { [BasePart]: Instance } = {}
+local welcomeBase: { [BasePart]: BasePart } = {}
+local toyConnections: { [Instance]: RBXScriptConnection } = {}
+type Pending = { connection: RBXScriptConnection? }
+local pending: { [BasePart]: Pending } = {}
 local warnedMissing: { [string]: boolean } = {}
 -- Jouets pieges : garde cote serveur seulement, pour que personne ne puisse les reperer avant de les ramasser.
 local trapped: { [Instance]: boolean } = {}
@@ -170,6 +176,76 @@ end
 local SETTLE_SECONDS = 1.5
 local settling: { [Instance]: number } = {}
 
+local function validPoint(point: BasePart): boolean
+    return point:IsDescendantOf(workspace) and CollectionService:HasTag(point, SPAWN_TAG)
+end
+
+local function cancelPending(point: BasePart): ()
+    local previous = pending[point]
+    pending[point] = nil
+    if previous and previous.connection then
+        previous.connection:Disconnect()
+    end
+end
+
+local function scheduleReplacement(point: BasePart): ()
+    cancelPending(point)
+    if not validPoint(point) then
+        return
+    end
+    -- L'identité de cette table est le jeton de génération ; aucun ancien rappel ne peut le retrouver.
+    local token: Pending = {}
+    pending[point] = token
+    token.connection = point.AncestryChanged:Connect(function()
+        if not point:IsDescendantOf(workspace) then
+            cancelPending(point)
+        end
+    end)
+    local kitchen = workspace:FindFirstChild("Cuisine")
+    local delaySeconds = if kitchen and point:IsDescendantOf(kitchen)
+        then Tuning.KITCHEN_RESPAWN_SECONDS
+        elseif point:GetAttribute("PointAccueil") == true then Tuning.WELCOME_RESPAWN_SECONDS
+        else Tuning.RESPAWN_SECONDS
+    task.delay(delaySeconds, function()
+        if pending[point] ~= token then
+            return
+        end
+        cancelPending(point)
+        local current: Instance? = occupied[point]
+        if validPoint(point) and current == nil then
+            ToySpawnService:SpawnAt(point)
+        end
+    end)
+end
+
+local function forgetToy(toy: Instance): BasePart?
+    local point = spawnOf[toy]
+    spawnOf[toy] = nil
+    trapped[toy] = nil
+    settling[toy] = nil
+    local connection = toyConnections[toy]
+    toyConnections[toy] = nil
+    if connection then
+        connection:Disconnect()
+    end
+    if point and occupied[point] == toy then
+        occupied[point] = nil
+        return point
+    end
+    return nil
+end
+
+-- Contrat serveur pour le tutoriel : association par instance, indépendante des noms des six bases.
+function ToySpawnService:GetWelcomeBase(toy: Instance): BasePart?
+    local point = spawnOf[toy]
+    return if point and validPoint(point) then welcomeBase[point] else nil
+end
+
+function ToySpawnService:GetWelcomeOrigin(base: BasePart): Vector3?
+    local origin = WelcomePoints.Origin(base)
+    return if origin then origin.Position else nil
+end
+
 local function rest(toy: Instance, spawnPart: BasePart): ()
     local parts = allParts(toy)
     for _, part in parts do
@@ -236,6 +312,9 @@ function ToySpawnService:ApplyMutationLook(toy: Instance, mutationId: string?): 
 end
 
 function ToySpawnService:SpawnAt(spawnPart: BasePart): Instance?
+    if not validPoint(spawnPart) then
+        return nil
+    end
     local current: Instance? = occupied[spawnPart]
     if current then
         return current
@@ -244,9 +323,21 @@ function ToySpawnService:SpawnAt(spawnPart: BasePart): Instance?
     local rarity = spawnPart:GetAttribute("Rarity")
     local kitchenFolder = workspace:FindFirstChild("Cuisine")
     local inKitchen = kitchenFolder ~= nil and spawnPart:IsDescendantOf(kitchenFolder)
+    local welcome = spawnPart:GetAttribute("PointAccueil") == true and not inKitchen
     local toyId = if typeof(fixed) == "string" and Toys.Get(fixed)
         then fixed
         else pickToyId(if typeof(rarity) == "string" then rarity else nil, inKitchen)
+    if welcome then
+        -- Aucun tirage de mutation, de promotion lunaire ou de poids lourd pour l'accueil.
+        local candidates: { string } = {}
+        local models = ServerStorage:FindFirstChild("ToyModels")
+        for _, def in poolFor(false) do
+            if def.rarity == "Common" and def.carriers == 1 and models and models:FindFirstChild(def.id) then
+                table.insert(candidates, def.id)
+            end
+        end
+        toyId = if #candidates > 0 then candidates[random:NextInteger(1, #candidates)] else nil
+    end
     if toyId == nil then
         return nil
     end
@@ -256,9 +347,10 @@ function ToySpawnService:SpawnAt(spawnPart: BasePart): Instance?
     end
     toy.Name = toyId
     toy:SetAttribute("ToyId", toyId)
-    local mutation = pickMutation()
+    toy:SetAttribute("PointAccueil", if welcome then true else nil)
+    local mutation = if welcome then nil else pickMutation()
+    toy:SetAttribute("Mutation", mutation)
     if mutation then
-        toy:SetAttribute("Mutation", mutation)
         ToySpawnService:ApplyMutationLook(toy, mutation)
     else
         local def = Toys.Get(toyId)
@@ -272,11 +364,20 @@ function ToySpawnService:SpawnAt(spawnPart: BasePart): Instance?
     if toyDef and toyDef.carriers > 1 then
         ToySpawnService:ApplyHeavyBadge(toy, toyDef.carriers)
     end
-    if random:NextNumber() < Tuning.TRAP_CHANCE then
+    if not welcome and random:NextNumber() < Tuning.TRAP_CHANCE then
         trapped[toy] = true
     end
     spawnOf[toy] = spawnPart
     occupied[spawnPart] = toy
+    cancelPending(spawnPart)
+    toyConnections[toy] = toy.AncestryChanged:Connect(function()
+        if not toy:IsDescendantOf(workspace) then
+            local freed = forgetToy(toy)
+            if freed then
+                scheduleReplacement(freed)
+            end
+        end
+    end)
     CollectionService:AddTag(toy, TOY_TAG)
     spawnedEvent:Fire(toy)
     return toy
@@ -285,7 +386,7 @@ end
 -- Renvoie un jouet lache ou confisque sur son point d'origine.
 function ToySpawnService:ReturnToSpawn(toy: Instance): ()
     local spawnPart: BasePart? = spawnOf[toy]
-    if spawnPart == nil then
+    if spawnPart == nil or not validPoint(spawnPart) then
         toy:Destroy()
         return
     end
@@ -440,24 +541,29 @@ end
 
 -- Le jouet a ete depose dans une base : on libere son point et on programme le suivant.
 function ToySpawnService:OnTaken(toy: Instance): ()
-    trapped[toy] = nil
-    local spawnPart: BasePart? = spawnOf[toy]
-    spawnOf[toy] = nil
-    if spawnPart == nil then
-        return
+    local point = forgetToy(toy)
+    if point then
+        scheduleReplacement(point)
     end
-    local freed: BasePart = spawnPart
-    occupied[freed] = nil
-    task.delay(Tuning.RESPAWN_SECONDS, function()
-        if freed.Parent then
-            ToySpawnService:SpawnAt(freed)
-        end
-    end)
 end
 
 function ToySpawnService:Start(): ()
     local folder = liveFolder :: Folder
     folder.Parent = workspace
+
+    local pointsFolder = Instance.new("Folder")
+    pointsFolder.Name = "PointsAccueil"
+    pointsFolder.Parent = workspace
+    for _, entry in WelcomePoints.Build(pointsFolder) do
+        welcomeBase[entry.part] = entry.base
+        CollectionService:AddTag(entry.part, SPAWN_TAG)
+    end
+    CollectionService:GetInstanceRemovedSignal(SPAWN_TAG):Connect(function(instance: Instance)
+        if instance:IsA("BasePart") then
+            cancelPending(instance)
+            welcomeBase[instance] = nil
+        end
+    end)
 
     local function onSpawn(instance: Instance): ()
         -- Les tags suivent les instances rangees dans ServerStorage : seuls les points du workspace comptent.

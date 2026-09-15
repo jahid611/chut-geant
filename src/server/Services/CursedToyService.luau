@@ -57,6 +57,9 @@ end
 
 -- Maudit un jouet tout de suite (tests : CursedToyService:Curse(workspace.ToysLive.<jouet>)).
 function CursedToyService:Curse(toy: Model): boolean
+    if toy:GetAttribute("PointAccueil") then
+        return false
+    end
     if cursed[toy] then
         return true
     end
@@ -122,7 +125,7 @@ function CursedToyService:Curse(toy: Model): boolean
 end
 
 local function maybeCurse(toy: Instance): ()
-    if not toy:IsA("Model") or toy:GetAttribute("Temporaire") then
+    if not toy:IsA("Model") or toy:GetAttribute("Temporaire") or toy:GetAttribute("PointAccueil") then
         return
     end
     -- laisse le jouet vivant decider d'abord (meme signal) : un jouet n'est jamais vivant et maudit a la fois

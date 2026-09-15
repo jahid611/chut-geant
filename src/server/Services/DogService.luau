@@ -204,7 +204,7 @@ local function movementNoise(dt: number): number
         local toyId = if toy then toy:GetAttribute("ToyId") else nil
         local def = if typeof(toyId) == "string" then Toys.Get(toyId) else nil
         local quiet = math.max(1 - 0.1 * Abilities.Level(player, "QuietSlippers"), 0.4)
-        gain += fraction * Tuning.NOISE_MOVE_PER_SECOND * (if def then def.carriers else 1) * quiet * Kitchen.TILE_NOISE_FACTOR * dt
+        gain += fraction * Tuning.DOG_NOISE_MOVE_PER_SECOND * (if def then def.carriers else 1) * quiet * Kitchen.TILE_NOISE_FACTOR * dt
     end
     return gain
 end

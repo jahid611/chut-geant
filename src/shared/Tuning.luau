@@ -20,12 +20,19 @@ local Tuning = {
 
     -- Bruit
     NOISE_MAX = 100,
-    -- La jauge doit monter vite (retour utilisateur) : bruit plus fort, redescente plus lente.
-    NOISE_DECAY_PER_SECOND = 5,
+    -- Les petites prises de risque se récupèrent au calme ; la course longue reste dangereuse.
+    NOISE_DECAY_PER_SECOND = 8,
     -- En dessous de cette vitesse horizontale (studs/s), on se faufile sans bruit.
     SNEAK_SPEED = 9.5,
     -- Bruit par seconde a pleine vitesse, multiplie par le nombre de porteurs du jouet tenu.
     NOISE_MOVE_PER_SECOND = 13,
+    NOISE_MOVE_INITIAL = 8,
+    NOISE_RAMP_START_SECONDS = 3,
+    NOISE_RAMP_END_SECONDS = 8,
+    NOISE_RUN_RECOVERY = 2,
+    NOISE_OTHER_PLAYERS_FACTOR = 0.5,
+    -- Cuisine : débit historique, indépendant de la rampe de la chambre.
+    DOG_NOISE_MOVE_PER_SECOND = 13,
     NOISE_LANDING = 12,
     NOISE_BROADCAST_HZ = 10,
 
@@ -38,7 +45,14 @@ local Tuning = {
     GIANT_JUMP_RISE = 0.6,
 
     -- Jouets
-    RESPAWN_SECONDS = 20,
+    RESPAWN_SECONDS = 8,
+    KITCHEN_RESPAWN_SECONDS = 20,
+    -- Les points d'accueil servent au premier vol et au dépannage, sans boucle de combo trop rentable.
+    WELCOME_RESPAWN_SECONDS = 25,
+    WELCOME_POINTS_PER_BASE = 2,
+    WELCOME_MIN_DISTANCE = 35,
+    WELCOME_MAX_DISTANCE = 55,
+    WELCOME_POINT_SPACING = 20,
     RARITY_WEIGHTS = {
         Common = 60,
         Uncommon = 25,
@@ -79,11 +93,11 @@ local Tuning = {
 
     -- Furie (idee de l'utilisateur, AbilityService) : sprint tres rapide avec une trainee, mais tres bruyant,
     -- disponible toutes les FURY_COOLDOWN secondes.
-    FURY_SECONDS = 4,
-    FURY_COOLDOWN = 60,
+    FURY_SECONDS = 3,
+    FURY_COOLDOWN = 20,
+    FURY_PRICE = 750,
     FURY_SPEED_BONUS = 27,
-    -- En plus de la vitesse (deja comptee jusqu'a x1,5 dans le bruit). A 4, la jauge etait pleine en 1,5 s (mesure) :
-    -- a 1,2, une furie entiere dans la chambre remplit la jauge presque en entier.
+    -- En plus de la vitesse (déjà comptée jusqu'à x1,5) : environ 43 points sur une Furie depuis le repos.
     FURY_NOISE_MULTIPLIER = 1.2,
 
     -- Pieges et mini-jeux (EventService)

@@ -34,6 +34,8 @@ export type Item = {
     exclusive: boolean?,
 }
 
+local Tuning = require(script.Parent:WaitForChild("Tuning"))
+
 local TABS = { "Pouvoirs", "Améliorations", "Coffres", "Armes", "Cosmétiques" }
 
 local ITEMS: { Item } = {
@@ -43,9 +45,9 @@ local ITEMS: { Item } = {
         tab = "Pouvoirs",
         kind = "ability",
         name = "Furie",
-        description = "Cours très vite pendant 4 s. Très bruyant !",
+        description = string.format("Cours très vite pendant %d s. Très bruyant !", Tuning.FURY_SECONDS),
         icon = "pouvoirFurie",
-        prices = { 3000 },
+        prices = { Tuning.FURY_PRICE },
     },
     {
         id = "MagicPacifier",

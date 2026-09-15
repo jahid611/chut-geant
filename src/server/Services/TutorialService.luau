@@ -14,6 +14,7 @@
     Remote TutorialAction : "next" (etapes d'information) ou "skip" (passer le tutoriel).
 ]]
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -25,6 +26,7 @@ local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local BaseService = require(script.Parent:WaitForChild("BaseService"))
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local ShopService = require(script.Parent:WaitForChild("ShopService"))
+local ToySpawnService = require(script.Parent:WaitForChild("ToySpawnService"))
 
 local POLL_SECONDS = 0.5
 
@@ -124,23 +126,36 @@ setStep = function(player: Player, step: number): ()
     end
 end
 
--- Jouet libre le plus proche de la base du joueur (commun de preference) ; garde le meme tant qu'il est libre.
+local function available(toy: Model): boolean
+    local toyId = toy:GetAttribute("ToyId")
+    local def = if typeof(toyId) == "string" then Toys.Get(toyId) else nil
+    return toy:IsDescendantOf(workspace)
+        and CollectionService:HasTag(toy, "Toy")
+        and toy:GetAttribute("CarrierUserId") == nil
+        and toy:GetAttribute("AspireParUserId") == nil
+        and toy:GetAttribute("Temporaire") ~= true
+        and def ~= nil
+        and def.kitchenOnly ~= true
+        and def.carriers == 1
+end
+
+-- Privilégie les points d'accueil de cette base ; sinon garde le choix historique parmi les jouets libres.
 local function pickToy(player: Player): Model?
     local current: Model? = targetToy[player]
-    if current and current.Parent and current:GetAttribute("CarrierUserId") == nil then
-        return current
-    end
     local live = workspace:FindFirstChild("ToysLive")
     local base = BaseService:GetBase(player)
     local root = rootOf(player)
-    local origin = if base then base.Position elseif root then root.Position else nil
+    local outside = if base then ToySpawnService:GetWelcomeOrigin(base) else nil
+    local origin = outside or (if base then base.Position elseif root then root.Position else nil)
     if live == nil or origin == nil then
         return nil
     end
     local best: Model? = nil
     local bestScore = math.huge
+    local welcome: Model? = nil
+    local welcomeScore = math.huge
     for _, toy in live:GetChildren() do
-        if not toy:IsA("Model") or toy:GetAttribute("CarrierUserId") ~= nil then
+        if not toy:IsA("Model") or not available(toy) then
             continue
         end
         local toyId = toy:GetAttribute("ToyId")
@@ -149,12 +164,20 @@ local function pickToy(player: Player): Model?
             continue
         end
         local score = (toy:GetPivot().Position - origin).Magnitude
+        if base and ToySpawnService:GetWelcomeBase(toy) == base and score < welcomeScore then
+            welcome, welcomeScore = toy, score
+        end
         if def and def.rarity ~= "Common" then
             score += 150
         end
         if score < bestScore then
             best, bestScore = toy, score
         end
+    end
+    if welcome then
+        best = welcome
+    elseif current and available(current) then
+        best = current
     end
     targetToy[player] = best :: any
     return best
