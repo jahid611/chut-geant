@@ -48,7 +48,18 @@ type Kind = {
     speed: number,
     ambient: Color3,
     build: (ViewportFrame) -> Head?,
+    -- Image 2D a la place du modele 3D (tete de maman en colere choisie par l'utilisateur) ; "" = modele 3D.
+    imageId: string?,
 }
+
+-- Image « femme jumpscare » de l'utilisateur, televersee sur Roblox (rbxassetid://...) ; vide tant qu'elle ne l'est pas.
+local MOM_IMAGE_ID = ""
+-- Proportions de l'image (largeur / hauteur) et hauteur du visage dans l'image (0 = haut) : le zoom se fait sur lui.
+local MOM_IMAGE_RATIO = 1414 / 2000
+local MOM_IMAGE_FACE_Y = 0.36
+-- Hauteur de l'image en fraction de l'ecran, au debut et a l'impact (visage en tres gros plan).
+local IMAGE_START = 0.35
+local IMAGE_END = 3.4
 
 -- Maman : copie du modele « Maman » range dans le modele de la porte (tag MomDoor), posee a PoseVisible (face a la
 -- chambre). Tete = haut de la boite englobante ; MOM_FACE_SIGN inverse l'avant si le modele regarde vers -LookVector.
@@ -104,6 +115,7 @@ local KINDS: { [string]: Kind } = {
         build = buildBaby,
     },
     mom = {
+        imageId = MOM_IMAGE_ID,
         far = 1.8,
         near = 0.2,
         soundId = "rbxassetid://9114399356",
@@ -181,16 +193,6 @@ function Screamer.play(kindName: string?): ()
     group.Size = UDim2.fromScale(1, 1)
     group.Parent = screen
 
-    local viewport = Instance.new("ViewportFrame")
-    viewport.Name = "Visage"
-    viewport.BackgroundTransparency = 1
-    viewport.Size = UDim2.fromScale(OVERSIZE, OVERSIZE)
-    viewport.AnchorPoint = Vector2.new(0.5, 0.5)
-    viewport.Position = UDim2.fromScale(0.5, 0.5)
-    viewport.Ambient = kind.ambient
-    viewport.LightColor = Color3.fromRGB(255, 235, 225)
-    viewport.Parent = group
-
     local flash = Instance.new("Frame")
     flash.Name = "Flash"
     flash.BackgroundColor3 = Color3.fromRGB(200, 20, 40)
@@ -200,17 +202,58 @@ function Screamer.play(kindName: string?): ()
     flash.ZIndex = 2
     flash.Parent = group
 
-    local head = kind.build(viewport)
-    if head == nil then
-        screen:Destroy()
-        playing = false
-        return
+    -- update(eased, t, shake) : place la tete a chaque image selon l'avancement de l'approche.
+    local update: (number, number, number) -> ()
+    local imageId = kind.imageId
+    if imageId and imageId ~= "" then
+        -- Image 2D : elle grossit autour du visage (AnchorPoint sur le visage), hauteur relative a l'ecran.
+        local image = Instance.new("ImageLabel")
+        image.Name = "Visage"
+        image.BackgroundTransparency = 1
+        image.Image = imageId
+        image.ScaleType = Enum.ScaleType.Stretch
+        image.SizeConstraint = Enum.SizeConstraint.RelativeYY
+        image.AnchorPoint = Vector2.new(0.5, MOM_IMAGE_FACE_Y)
+        image.Position = UDim2.fromScale(0.5, 0.5)
+        image.Parent = group
+        update = function(eased: number, t: number, shake: number): ()
+            local height = IMAGE_START + (IMAGE_END - IMAGE_START) * eased
+            image.Size = UDim2.fromScale(height * MOM_IMAGE_RATIO, height)
+            image.Rotation = math.sin(t * 29) * 3 * eased
+            image.Position = UDim2.new(0.5, math.sin(t * 47) * shake, 0.5, math.cos(t * 43) * shake)
+        end
+    else
+        local viewport = Instance.new("ViewportFrame")
+        viewport.Name = "Visage"
+        viewport.BackgroundTransparency = 1
+        viewport.Size = UDim2.fromScale(OVERSIZE, OVERSIZE)
+        viewport.AnchorPoint = Vector2.new(0.5, 0.5)
+        viewport.Position = UDim2.fromScale(0.5, 0.5)
+        viewport.Ambient = kind.ambient
+        viewport.LightColor = Color3.fromRGB(255, 235, 225)
+        viewport.Parent = group
+        local head = kind.build(viewport)
+        if head == nil then
+            screen:Destroy()
+            playing = false
+            return
+        end
+        local camera = Instance.new("Camera")
+        camera.FieldOfView = 40
+        camera.Parent = viewport
+        viewport.CurrentCamera = camera
+        viewport.LightDirection = -head.frame.LookVector
+        update = function(eased: number, t: number, shake: number): ()
+            local distance = (kind.far + (kind.near - kind.far) * eased) * head.unit
+            local roll = math.rad(math.sin(t * 29) * 4 * eased)
+            camera.CFrame = CFrame.lookAt(
+                head.point + head.frame.LookVector * distance,
+                head.point,
+                head.frame.UpVector
+            ) * CFrame.Angles(0, 0, roll)
+            viewport.Position = UDim2.new(0.5, math.sin(t * 47) * shake, 0.5, math.cos(t * 43) * shake)
+        end
     end
-    local camera = Instance.new("Camera")
-    camera.FieldOfView = 40
-    camera.Parent = viewport
-    viewport.CurrentCamera = camera
-    viewport.LightDirection = -head.frame.LookVector
 
     scream(kind)
     TweenService:Create(group, TweenInfo.new(APPROACH * 0.6), { BackgroundTransparency = BACKDROP_TRANSPARENCY }):Play()
@@ -222,12 +265,7 @@ function Screamer.play(kindName: string?): ()
         local t = os.clock() - started
         local a = math.clamp(t / APPROACH, 0, 1)
         local eased = a * a
-        local distance = (kind.far + (kind.near - kind.far) * eased) * head.unit
-        local roll = math.rad(math.sin(t * 29) * 4 * eased)
-        camera.CFrame = CFrame.lookAt(head.point + head.frame.LookVector * distance, head.point, head.frame.UpVector)
-            * CFrame.Angles(0, 0, roll)
-        local shake = SHAKE_PIXELS * eased
-        viewport.Position = UDim2.new(0.5, math.sin(t * 47) * shake, 0.5, math.cos(t * 43) * shake)
+        update(eased, t, SHAKE_PIXELS * eased)
         if a >= 1 and not impacted then
             impacted = true
             flash.BackgroundTransparency = 0.45
