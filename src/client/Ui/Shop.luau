@@ -628,11 +628,12 @@ function Shop.open(gui: Instance): ()
             Vector2.zero
         )
         Theme.limitText(button, 24)
-        -- icone a gauche, texte a droite : le texte commence apres l'icone (32 % de l'onglet)
+        -- icone a gauche, texte a droite : marge fixe de la largeur de l'icone. En pourcentage de l'onglet, l'icone
+        -- (46 px) recouvrait le debut du texte des qu'il y a eu 6 onglets (« méliorations », capture du 15/09).
         local buttonPadding = button:FindFirstChildOfClass("UIPadding")
         if buttonPadding then
-            buttonPadding.PaddingLeft = UDim.new(0.3, 0)
-            buttonPadding.PaddingRight = UDim.new(0, 8)
+            buttonPadding.PaddingLeft = UDim.new(0, 52)
+            buttonPadding.PaddingRight = UDim.new(0, 6)
         end
         -- jamais de rond vide : une icone d'onglet pas encore televersee retombe sur une icone existante
         local tabIcon = if hasImage(style.icon) then style.icon elseif hasImage("lourd") then "lourd" else "tetine"
@@ -641,7 +642,7 @@ function Shop.open(gui: Instance): ()
             "Icone",
             tabIcon,
             UDim2.new(0, 46, 1.5, 0),
-            UDim2.fromScale(-0.28, 0.5),
+            UDim2.new(0, -50, 0.5, 0),
             Vector2.new(0, 0.5),
             Theme.WHITE
         )
