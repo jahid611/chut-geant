@@ -122,9 +122,10 @@ local Assets: { [string]: string } = {
 
     -- Armes (Shared/CatalogWeapons) : icones a generer/televerser ; « 0 » = tuile de la carte en attendant.
     -- Icones v4 (15/09) : rendu du vrai modele de ServerStorage.WeaponModels puis FLUX a partir de ce rendu, decoupe a
-    -- sa silhouette (tools/gen2d/lot-armes-v4). L'oreiller attend son vrai modele (ce n'est qu'une Part en marbre).
+    -- sa silhouette (tools/gen2d/lot-armes-v4). L'oreiller a maintenant un vrai modele 3D (TRELLIS, asset 100675490962807,
+    -- tools/scene/charger-oreiller.luau) a la place de la Part en marbre, et son icone vient de ce modele.
     iconeArmeTapette = "rbxassetid://112483137330297",
-    iconeArmeOreiller = "rbxassetid://94740568307496",
+    iconeArmeOreiller = "rbxassetid://131836283906234",
     iconeArmeBatte = "rbxassetid://85286878326817",
     iconeArmeEpee = "rbxassetid://76797138688297",
     iconeArmeChausson = "rbxassetid://109495423620813",
