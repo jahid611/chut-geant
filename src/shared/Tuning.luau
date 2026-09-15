@@ -29,11 +29,13 @@ local Tuning = {
     -- Deplacement
     -- 15/09 : un peu plus rapide (retour utilisateur), 14 -> 17 ; les autres vitesses suivent en proportion (x1,21)
     -- et SNEAK_SPEED aussi, donc le bruit a pleine vitesse ne change pas (NoiseService rapporte la vitesse a ces deux).
-    WALK_SPEED = 17,
+    -- 15/09 soir : « augmente pas mal la vitesse de base des joueurs, donc proportionnellement celle des bonus » : x1,3
+    -- sur toutes les vitesses de deplacement (marche, portage, se faufiler, Furie, bras costauds).
+    WALK_SPEED = 22,
     -- Vitesse en portant, selon le nombre de porteurs requis par le jouet.
-    CARRY_SPEED = { 13.5, 9.5, 7.5 },
+    CARRY_SPEED = { 17.5, 12.5, 9.75 },
     -- Vitesse d'un porteur a qui il manque des coequipiers.
-    CARRY_SPEED_ALONE = 2.5,
+    CARRY_SPEED_ALONE = 3.25,
     -- Distance a laquelle un coequipier compte comme aide au portage.
     HELPER_RADIUS = 10,
     PICKUP_DISTANCE = 10,
@@ -43,17 +45,18 @@ local Tuning = {
     -- Les petites prises de risque se récupèrent au calme ; la course longue reste dangereuse.
     NOISE_DECAY_PER_SECOND = 8,
     -- En dessous de cette vitesse horizontale (studs/s), on se faufile sans bruit.
-    SNEAK_SPEED = 9.5,
+    SNEAK_SPEED = 12.4,
     -- Bruit par seconde a pleine vitesse, multiplie par le nombre de porteurs du jouet tenu.
-    NOISE_MOVE_PER_SECOND = 13,
-    NOISE_MOVE_INITIAL = 8,
+    -- 15/09 soir : « diminue pas mal la rapidite de la jauge a se remplir, ca permet de jouer au jeu » : -40 %.
+    NOISE_MOVE_PER_SECOND = 8,
+    NOISE_MOVE_INITIAL = 5,
     NOISE_RAMP_START_SECONDS = 3,
     NOISE_RAMP_END_SECONDS = 8,
     NOISE_RUN_RECOVERY = 2,
     NOISE_OTHER_PLAYERS_FACTOR = 0.5,
     -- Cuisine : débit historique, indépendant de la rampe de la chambre.
-    DOG_NOISE_MOVE_PER_SECOND = 13,
-    NOISE_LANDING = 12,
+    DOG_NOISE_MOVE_PER_SECOND = 8,
+    NOISE_LANDING = 7,
     NOISE_BROADCAST_HZ = 10,
 
     -- Geant
@@ -66,8 +69,9 @@ local Tuning = {
     HAND_CHASE_ENABLED = true,
     -- Vitesse de la main (studs/s), lineaire du debut a la fin de la chasse : on la distance a vide (marche 17), pas
     -- en portant un jouet (13,5 / 9,5 / 7,5) sans Furie.
-    HAND_SPEED_START = 13,
-    HAND_SPEED_END = 19,
+    -- 15/09 soir : « elle est super lente » ; avec la marche a 22, elle part a 20 et finit a 30 (rattrape a vide).
+    HAND_SPEED_START = 20,
+    HAND_SPEED_END = 30,
     -- Contact : distance horizontale au centre de l'ombre, et ecart vertical maximal (sauter ne suffit pas a passer).
     HAND_CATCH_RADIUS = 7,
     HAND_REACH_HEIGHT = 12,
@@ -125,14 +129,14 @@ local Tuning = {
     -- Bras costauds : vitesse en plus en portant, et vitesse seul sur un objet lourd. A +2 (11 -> 13) on ne sentait
     -- rien, on marche a 14 a vide (retour utilisateur « les bonus ne marchent pas »).
     STRONG_ARMS_BONUS = 5,
-    STRONG_ARMS_ALONE_SPEED = 8,
+    STRONG_ARMS_ALONE_SPEED = 10.4,
 
     -- Furie (idee de l'utilisateur, AbilityService) : sprint tres rapide avec une trainee, mais tres bruyant,
     -- disponible toutes les FURY_COOLDOWN secondes.
     FURY_SECONDS = 3,
     FURY_COOLDOWN = 20,
     FURY_PRICE = 750,
-    FURY_SPEED_BONUS = 27,
+    FURY_SPEED_BONUS = 35,
     -- En plus de la vitesse (déjà comptée jusqu'à x1,5) : environ 43 points sur une Furie depuis le repos.
     FURY_NOISE_MULTIPLIER = 1.2,
 

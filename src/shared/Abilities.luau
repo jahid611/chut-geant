@@ -47,9 +47,9 @@ Abilities.CAPE_TRANSPARENCY = 0.7
 
 -- Ameliorations a niveaux
 Abilities.QUIET_PER_LEVEL = 0.1 -- Chaussons silencieux : -10 % de bruit de deplacement par niveau
--- (x1,21 le 15/09, comme toutes les vitesses de base)
-Abilities.STRONG_BONUS_PER_LEVEL = 2.4 -- Bras costauds : vitesse en portant (aide suffisante)
-Abilities.STRONG_ALONE_PER_LEVEL = 1.8 -- Bras costauds : vitesse seul sur un jouet lourd
+-- (x1,21 le 15/09, puis x1,3 le 15/09 au soir, comme toutes les vitesses de base)
+Abilities.STRONG_BONUS_PER_LEVEL = 3.1 -- Bras costauds : vitesse en portant (aide suffisante)
+Abilities.STRONG_ALONE_PER_LEVEL = 2.35 -- Bras costauds : vitesse seul sur un jouet lourd
 Abilities.MAGNET_PER_LEVEL = 0.1 -- Aimant a tetines : +10 % de revenu par niveau
 Abilities.KEEN_EAR_LEAD = { 3, 6 } -- Oreille fine : secondes d'avance de l'indice, par niveau
 
