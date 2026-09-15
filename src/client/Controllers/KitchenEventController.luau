@@ -73,6 +73,13 @@ function KitchenEventController:Start(): ()
     local banner: Frame? = nil
     local countdownConnection: RBXScriptConnection? = nil
 
+    local function updateBannerVisibility(): ()
+        local menus = player:GetAttribute("MenusOuverts")
+        if banner then
+            banner.Visible = not (typeof(menus) == "number" and menus > 0) and player:GetAttribute("Piece") == "Cuisine"
+        end
+    end
+
     local function clear(): ()
         if countdownConnection then
             countdownConnection:Disconnect()
@@ -98,6 +105,7 @@ function KitchenEventController:Start(): ()
         scale.Scale = target * 0.6
         TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = target }):Play()
         banner = holder
+        updateBannerVisibility()
 
         local title = Theme.text(
             holder,
@@ -137,6 +145,12 @@ function KitchenEventController:Start(): ()
             end)
         end
     end
+
+    local menusConnection = player:GetAttributeChangedSignal("MenusOuverts"):Connect(updateBannerVisibility)
+    gui.Destroying:Connect(function()
+        menusConnection:Disconnect()
+        clear()
+    end)
 
     local remote = Remotes.Get("KitchenEvent") :: RemoteEvent
     remote.OnClientEvent:Connect(function(kind: any, phase: any, endsAt: any)

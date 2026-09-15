@@ -4,6 +4,32 @@ Lire ce fichier en premier à chaque reprise de session. Cocher au fur et à mes
 
 ## Concept
 
+### Corrections après les tests du 15/09 (validation en jeu en attente)
+
+- Les bandeaux de chambre et de cuisine sont masqués quand `MenusOuverts > 0`. Les événements et leurs
+  compteurs continuent pendant les menus ; le cadre courant revient à la fermeture du dernier menu.
+  Les messages courts et célébrations déjà affichés gardent leur position, calculée à leur création.
+- C2-R1 était déjà corrigée : publication des manches seulement si `dirty`, avec publication immédiate aux
+  transitions et révisions communes aux instantanés. `RoundService` n'a pas été modifié dans ce lot.
+- C2-R2 était déjà corrigée pour l'ouverture automatique (`p.count > 0`) et le classement final vide.
+  En consultation manuelle d'une manche vide, les montants sont remplacés par « Aucune récompense pour cette manche. ».
+- Tétine : attente des modèles, de `ToysLive`, du sol, de la zone de chambre et du repère du trampoline,
+  bornée à 15 s dans `task.spawn`. Dépendance indisponible : reprise après 20 s, un seul essai en cours,
+  avertissement seulement si la cause change. La mise à jour quotidienne tourne indépendamment.
+  `SpawnTemporary` fournit désormais une seconde valeur de retour distinguant dépendance, modèle et placement.
+  Un placement refusé arrête les essais ; `ToyPlacement`, `ToyPhysics` et leurs protections sont inchangés.
+
+Vérifications de GPT : `lune run test-rounds` réussi ; `lune run check` entièrement vert après correction
+de deux écarts de formatage. Inspection MCP en édition : `ServerStorage.ToyModels.Pacifier` existe et contient
+un MeshPart. Cela ne prouve pas sa disponibilité au démarrage ni la validité de sa pose sur le matelas.
+
+Claude doit lancer les playtests par l'arbitre, lire les nouveaux diagnostics et arrêter les sessions :
+menus multiples, événements démarrant/finissant pendant un menu, capture avec message court avant la boutique,
+formats téléphone, bilan vide et bilan différé d'un contributeur, révisions stables sans dépôt, arrivée/profil prêt
+pendant la préparation. Tester les dépendances de la tétine absentes/retardées dans un banc isolé et la reprise
+sans doublon. Si le placement est refusé, traiter la pose sur le matelas dans une tâche séparée (C1-P2).
+Aucun playtest ni capture réalisés par GPT pour ce lot ; relecture de Claude en attente.
+
 ### Boutique Robux — onglet Tétines (validation en jeu en attente)
 
 Quatre packs, séparés des achats en tétines : 2 500 pour 25 R$, 10 000 pour 79 R$,

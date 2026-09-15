@@ -21,6 +21,7 @@
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -43,10 +44,11 @@ local REWARD_CASH = 20000
 local REWARD_XP = 400
 local SCALE = 1.7
 local RESPAWN_SECONDS = 20
+local DEPENDENCY_TIMEOUT = 15
+local DEPENDENCY_POLL = 0.5
 -- jouet « temporaire » qui ne disparait jamais de lui-meme
 local LIFETIME = 10 ^ 9
 local DROP_HEIGHT = 8
-local FALLBACK_SPOT = Vector3.new(60, 112, -150)
 local REFUSE_COOLDOWN = 2.5
 local GOLD = Color3.fromRGB(255, 205, 80)
 local ICON = "rbxassetid://78137565006209" -- Ui/Assets.pouvoirTetine
@@ -61,21 +63,64 @@ local lastMission: Instance? = nil
 local holderUserId: number? = nil
 local goneAt: number? = nil
 local respawnPending = false
+local spawnInProgress = false
+local lastSpawnFailure: string? = nil
 local lastRefusal: { [Player]: number } = {}
 
 local function remote(): RemoteEvent
     return Remotes.Get("PacifierMission") :: RemoteEvent
 end
 
--- Matelas du berceau : la cible du trampoline (attribut Target de la toile), sinon une position connue.
-local function cribSpot(): Vector3
+-- Attendre le vrai repère du matelas, sans déplacer la mission vers un point de secours.
+local function cribSpot(): Vector3?
     for _, pad in CollectionService:GetTagged("Trampoline") do
         local target = pad:GetAttribute("Target")
         if pad:IsDescendantOf(workspace) and typeof(target) == "Vector3" then
             return target
         end
     end
-    return FALLBACK_SPOT
+    return nil
+end
+
+local function spawnDependencies(): (Vector3?, string?)
+    local models = ServerStorage:FindFirstChild("ToyModels")
+    if models == nil then
+        return nil, "dépendance : ServerStorage.ToyModels indisponible"
+    end
+    local template = models:FindFirstChild(TOY_ID)
+    if template == nil then
+        return nil, "modèle absent : ServerStorage.ToyModels.Pacifier"
+    end
+    if not template.Archivable or Zone.PrimaryPart(template) == nil then
+        return nil, "modèle invalide : Pacifier doit être clonable et avoir une pièce physique"
+    end
+    local live = workspace:FindFirstChild("ToysLive")
+    if live == nil or not live:IsA("Folder") then
+        return nil, "dépendance : Workspace.ToysLive indisponible"
+    end
+    local room = workspace:FindFirstChild("Chambre")
+    local structure = if room then room:FindFirstChild("Structure") else nil
+    local floor = if structure then structure:FindFirstChild("Sol") else nil
+    if floor == nil or not floor:IsA("BasePart") then
+        return nil, "dépendance : Workspace.Chambre.Structure.Sol indisponible"
+    end
+    local spot = cribSpot()
+    if spot == nil then
+        return nil, "dépendance : cible Target du trampoline indisponible"
+    end
+    for _, zone in CollectionService:GetTagged("GiantRoom") do
+        if zone:IsA("BasePart") and zone:IsDescendantOf(workspace) and Zone.Contains(zone, spot) then
+            return spot, nil
+        end
+    end
+    return nil, "dépendance : zone GiantRoom du berceau indisponible"
+end
+
+local function reportSpawnFailure(reason: string): ()
+    if lastSpawnFailure ~= reason then
+        lastSpawnFailure = reason
+        warn("[PacifierMissionService] " .. reason)
+    end
 end
 
 local function doneToday(player: Player): boolean
@@ -208,14 +253,33 @@ end
 
 spawnMission = function(): ()
     local current = mission
-    if current and current.Parent then
+    if spawnInProgress or (current and current.Parent) then
         return
     end
-    local toy = ToySpawnService:SpawnTemporary(TOY_ID, cribSpot() + Vector3.new(0, DROP_HEIGHT, 0), nil, LIFETIME, nil)
+    spawnInProgress = true
+    local deadline = os.clock() + DEPENDENCY_TIMEOUT
+    local spot, reason = spawnDependencies()
+    while spot == nil and os.clock() < deadline do
+        task.wait(DEPENDENCY_POLL)
+        spot, reason = spawnDependencies()
+    end
+    if spot == nil then
+        spawnInProgress = false
+        reportSpawnFailure(
+            (reason or "dépendance indisponible") .. " ; attente de 15 s expirée, nouvel essai dans 20 s"
+        )
+        scheduleRespawn()
+        return
+    end
+    local toy, failure =
+        ToySpawnService:SpawnTemporary(TOY_ID, spot + Vector3.new(0, DROP_HEIGHT, 0), nil, LIFETIME, nil)
+    spawnInProgress = false
     if toy == nil then
-        warn("[PacifierMissionService] modele ServerStorage.ToyModels.Pacifier absent : pas de mission de la tetine")
+        -- Le placement reste protégé par PlaceAt. Un refus nécessite une tâche séparée, sans essais en boucle.
+        reportSpawnFailure(failure or "échec d'apparition sans diagnostic")
         return
     end
+    lastSpawnFailure = nil
     decorate(toy)
     mission = toy
     lastMission = toy
@@ -296,10 +360,9 @@ function PacifierMissionService:Start(): ()
         lastRefusal[player] = nil
     end)
 
+    -- Les filtres et écouteurs sont branchés ; Start revient sans attendre les assets.
+    task.spawn(spawnMission)
     task.spawn(function()
-        -- la chambre et le dossier ToysLive sont prets apres le demarrage des autres services
-        task.wait(3)
-        spawnMission()
         -- changement de jour : la mission redevient possible pour tout le monde
         while true do
             task.wait(30)

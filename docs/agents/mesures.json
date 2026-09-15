@@ -53,5 +53,16 @@
     "remarques_graves": 3,
     "playtests_rates": 0,
     "duree_min": 20
+  },
+  {
+    "date": "2026-09-15T15:36:36.985Z",
+    "tache": "Petites corrections après les tests du 15/09 : (1) le bandeau d'événement (ex. « PANNE DE VEILLEUSE ! » et sa ligne d'explication) s'affiche par-dessus le titre de la boutique et des autres fenêtres Modal : le masquer ou le décaler tant qu'une fenêtre est ouverte (Modal publie déjà MenusOuverts). (2) Remarque C2-R1 : RoundService:publish() réécrit les attributs JSON de la manche toutes les ROUND_PUBLISH_SECONDS même sans changement ; ne publier que si l'état a changé. (3) Remarque C2-R2 : le bilan d'une manche sans aucun dépôt s'ouvre seul avec « Le premier dépôt lance le classement ! » et « +0 tétines +0 XP » ; ne pas l'ouvrir automatiquement quand personne n'a contribué, ou afficher un texte de fin adapté. (4) Avertissement « [PacifierMissionService] modele ServerStorage.ToyModels.Pacifier absent » au lancement du playtest alors que le modèle existe dans ServerStorage.ToyModels : vérifier l'ordre de chargement (attente non bloquante dans task.spawn). Texte français sans emoji, rien qui déborde, anti-triche inchangé.",
+    "type": "ui",
+    "implementeur": "gpt",
+    "relecteur": "claude",
+    "iterations": 1,
+    "remarques_graves": 0,
+    "playtests_rates": 0,
+    "duree_min": 17
   }
 ]

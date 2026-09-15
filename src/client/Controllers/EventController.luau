@@ -62,6 +62,13 @@ local sounds: { [string]: Sound } = {}
 local banner: Frame? = nil
 local bannerToken = 0
 
+local function updateBannerVisibility(): ()
+    local menus = player:GetAttribute("MenusOuverts")
+    if banner then
+        banner.Visible = not (typeof(menus) == "number" and menus > 0) and player:GetAttribute("Piece") ~= "Cuisine"
+    end
+end
+
 local function sound(name: string): Sound
     local existing = sounds[name]
     if existing then
@@ -120,6 +127,7 @@ local function showBanner(title: string, subtitle: string, color: Color3, endsAt
     scale.Scale = target * 0.6
     TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = target }):Play()
     banner = holder
+    updateBannerVisibility()
 
     -- Texte flottant, sans carte (retour utilisateur) : titre, sous-titre et compteur avec un contour epais.
     local function thick(label: TextLabel, thickness: number): ()
@@ -1347,6 +1355,12 @@ function EventController:Start(): ()
     gui.IgnoreGuiInset = true
     gui.DisplayOrder = 8
     gui.Parent = player:WaitForChild("PlayerGui")
+
+    local menusConnection = player:GetAttributeChangedSignal("MenusOuverts"):Connect(updateBannerVisibility)
+    gui.Destroying:Connect(function()
+        menusConnection:Disconnect()
+        clearBanner()
+    end)
 
     for _, name in { "cry", "shh", "stairs", "creak", "beep", "boom" } do
         sound(name)

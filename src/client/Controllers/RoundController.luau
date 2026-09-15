@@ -225,7 +225,9 @@ function RoundController:Start(): ()
             Theme.label(
                 content,
                 "Montants",
-                string.format("+%s tétines   +%d XP", Theme.formatNumber(p.cash), p.xp),
+                if s.total == 0
+                    then "Aucune récompense pour cette manche."
+                    else string.format("+%s tétines   +%d XP", Theme.formatNumber(p.cash), p.xp),
                 UDim2.new(0.78, 0, 0, 32),
                 UDim2.new(0.18, 0, 0, 74),
                 Theme.MINT,

@@ -481,7 +481,7 @@ end
     Jouet temporaire (evenements : pluie de jouets, jouet dore geant) : lache a une position, il tombe par gravite
     (PlaceAt), n'a pas de point d'apparition (depose ou lache, il n'est pas remplace) et disparait apres `lifetime`
     secondes s'il n'est pas porte a ce moment-la. toyId nil = tire selon `rarity` (ou toutes raretes).
-    Attribut Temporaire = true. Rend le jouet, ou nil si le modele manque.
+    Attribut Temporaire = true. Rend le jouet, ou nil et un diagnostic (dépendance, modèle ou placement).
 ]]
 function ToySpawnService:SpawnTemporary(
     toyId: string?,
@@ -489,14 +489,17 @@ function ToySpawnService:SpawnTemporary(
     mutation: string?,
     lifetime: number,
     rarity: string?
-): Instance?
+): (Instance?, string?)
+    if liveFolder == nil or liveFolder.Parent ~= workspace then
+        return nil, "dépendance : Workspace.ToysLive indisponible"
+    end
     local id = if toyId and Toys.Get(toyId) then toyId else pickToyId(rarity)
     if id == nil then
-        return nil
+        return nil, "modèle : aucun jouet disponible pour cette rareté"
     end
     local toy = ToySpawnService:CloneTemplate(id)
     if toy == nil then
-        return nil
+        return nil, "modèle absent ou non clonable : ServerStorage.ToyModels." .. id
     end
     toy.Name = id
     toy:SetAttribute("ToyId", id)
@@ -511,7 +514,7 @@ function ToySpawnService:SpawnTemporary(
     toy.Parent = liveFolder
     ToySpawnService:PlaceAt(toy, CFrame.new(position) * CFrame.Angles(0, random:NextNumber(0, math.pi * 2), 0))
     if toy.Parent == nil then
-        return nil
+        return nil, "placement refusé par PlaceAt : pièce ou sol non admissible"
     end
     if def and def.carriers > 1 then
         ToySpawnService:ApplyHeavyBadge(toy, def.carriers)
@@ -522,7 +525,7 @@ function ToySpawnService:SpawnTemporary(
             toy:Destroy()
         end
     end)
-    return toy
+    return toy, nil
 end
 
 -- Le jouet a ete depose dans une base : on libere son point et on programme le suivant.
