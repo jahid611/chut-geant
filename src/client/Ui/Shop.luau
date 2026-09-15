@@ -22,6 +22,7 @@
     largeur en 4 colonnes, contenu des cartes borne a la carte, textes a taille bornee.
 ]]
 
+local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -29,6 +30,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Catalog = require(Shared:WaitForChild("Catalog"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local RobuxProducts = require(Shared:WaitForChild("RobuxProducts"))
 local Tuning = require(Shared:WaitForChild("Tuning"))
 
 local Assets = require(script.Parent:WaitForChild("Assets"))
@@ -43,6 +45,7 @@ local TAB_STYLE: { [string]: { color: Color3, icon: string } } = {
     ["Coffres"] = { color = Theme.MINT, icon = "ongletCoffres" },
     ["Armes"] = { color = Theme.RED, icon = "iconeArmeBatte" },
     ["Cosmétiques"] = { color = Theme.YELLOW, icon = "ongletSkins" },
+    ["Tétines"] = { color = Theme.MINT, icon = "tetine" },
 }
 
 local EQUIPPABLE: { [string]: boolean } = { trail = true, outline = true, skin = true, weapon = true, lamp = true }
@@ -53,6 +56,44 @@ local MAX_PIPS = 5
 local Shop = {}
 
 local player = Players.LocalPlayer
+local notificationGui: Instance? = nil
+local promptOpen = false
+
+-- Écoute gardée après fermeture de la boutique : le reçu peut être confirmé plus tard.
+local function listenForRobux(gui: Instance): ()
+    if notificationGui == gui then
+        return
+    end
+    notificationGui = gui
+    local initial = player:GetAttribute("RobuxTetinesCreditees")
+    local confirmed = if typeof(initial) == "number" then initial else 0
+    local connection = player:GetAttributeChangedSignal("RobuxTetinesCreditees"):Connect(function()
+        local total = player:GetAttribute("RobuxTetinesCreditees")
+        if typeof(total) ~= "number" then
+            return
+        end
+        local added = total - confirmed
+        confirmed = total
+        if added > 0 then
+            Sfx.play("purchase")
+            Theme.toast(gui, "+" .. Theme.formatNumber(added) .. " tétines reçues !", Theme.GREEN)
+        end
+    end)
+    local finished = MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId: number)
+        if userId == player.UserId then
+            -- Fermer le verrou d'interface seulement : cet événement ne prouve aucun crédit.
+            promptOpen = false
+        end
+    end)
+    gui.Destroying:Connect(function()
+        connection:Disconnect()
+        finished:Disconnect()
+        if notificationGui == gui then
+            notificationGui = nil
+            promptOpen = false
+        end
+    end)
+end
 
 local function levelOf(id: string): number
     local value = player:GetAttribute("Owned_" .. id)
@@ -265,6 +306,7 @@ local function subtitle(item: Catalog.Item): string
 end
 
 function Shop.open(gui: Instance): ()
+    listenForRobux(gui)
     if Modal.isOpen(gui) then
         return
     end
@@ -285,7 +327,7 @@ function Shop.open(gui: Instance): ()
         34
     )
 
-    -- Onglets : quatre parts egales de la largeur
+    -- Onglets : parts égales de la largeur.
     local tabs = Instance.new("Frame")
     tabs.Name = "Onglets"
     tabs.BackgroundTransparency = 1
@@ -468,6 +510,76 @@ function Shop.open(gui: Instance): ()
         end
     end
 
+    local function robuxCard(pack: RobuxProducts.Pack, order: number): ()
+        local frame = Instance.new("Frame")
+        frame.Name = pack.id
+        frame.LayoutOrder = order
+        frame.BackgroundColor3 = Theme.NAVY_LIGHT
+        frame.BorderSizePixel = 0
+        frame.ClipsDescendants = true
+        frame.Parent = scroller
+        Theme.corner(frame, 22)
+        Theme.stroke(frame, 2, Theme.MINT)
+        Theme.label(
+            frame,
+            "Titre",
+            pack.label,
+            UDim2.new(1, -20, 0, 48),
+            UDim2.new(0.5, 0, 0, 10),
+            Theme.WHITE,
+            Vector2.new(0.5, 0),
+            24
+        )
+        Theme.icon(frame, "Image", pack.icon, UDim2.new(0.7, 0, 0, 108), UDim2.new(0.5, 0, 0, 70), Vector2.new(0.5, 0))
+        Theme.label(
+            frame,
+            "Montant",
+            Theme.formatNumber(pack.cash) .. " tétines",
+            UDim2.new(1, -24, 0, 36),
+            UDim2.new(0.5, 0, 0, 182),
+            Theme.MINT,
+            Vector2.new(0.5, 0),
+            24
+        )
+        Theme.label(
+            frame,
+            "Prix",
+            tostring(pack.robux) .. " R$",
+            UDim2.new(0.8, 0, 0, 36),
+            UDim2.new(0.5, 0, 0, 224),
+            Theme.WHITE,
+            Vector2.new(0.5, 0),
+            22
+        )
+        local available = pack.productId > 0
+        local button = Theme.button(
+            frame,
+            "Bouton",
+            if available then "Acheter" else "Bientôt",
+            if available then Theme.GREEN else Theme.GREY,
+            UDim2.new(0.84, 0, 0, 48),
+            UDim2.new(0.5, 0, 1, -12),
+            Vector2.new(0.5, 1)
+        )
+        Theme.limitText(button, 24)
+        button.Interactable = available
+        if available then
+            button.Activated:Connect(function()
+                if promptOpen then
+                    return
+                end
+                promptOpen = true
+                local ok = pcall(function()
+                    MarketplaceService:PromptProductPurchase(player, pack.productId)
+                end)
+                if not ok then
+                    promptOpen = false
+                    Theme.toast(gui, "L'achat Robux est indisponible, réessaie.", Theme.RED)
+                end
+            end)
+        end
+    end
+
     local tabButtons: { [string]: TextButton } = {}
 
     render = function(): ()
@@ -479,6 +591,11 @@ function Shop.open(gui: Instance): ()
             end
         end
         local order = 0
+        if currentTab == "Tétines" then
+            for i, pack in RobuxProducts.Packs do
+                robuxCard(pack, i)
+            end
+        end
         for _, item in Catalog.All() do
             if item.tab == currentTab then
                 order += 1
