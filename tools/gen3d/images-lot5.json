@@ -1,0 +1,35 @@
+{
+    "jobs":  [
+                 {
+                     "out":  "assets/concepts/bebe/pieces/main-v2a.png",
+                     "style":  "s",
+                     "w":  1024,
+                     "prompt":  "a single giant chubby baby hand reaching forward to grab, very short stubby rounded fingers, dimpled knuckles, soft pink baby skin, cute cartoon proportions, light-green dinosaur onesie sleeve with a soft cuff at the wrist, three-quarter view",
+                     "h":  1024
+                 },
+                 {
+                     "out":  "assets/concepts/bebe/pieces/main-v2b.png",
+                     "style":  "s",
+                     "w":  1024,
+                     "prompt":  "a cute cartoon baby hand with five tiny chubby fingers spread open, reaching toward the viewer, soft round palm, plump wrist inside a fuzzy light-green dinosaur sleeve cuff, side three-quarter view",
+                     "h":  1024
+                 },
+                 {
+                     "out":  "assets/concepts/bebe/pieces/corps-v2a.png",
+                     "style":  "s",
+                     "w":  1024,
+                     "prompt":  "a chubby cute baby sleeping peacefully on its back, light-green dinosaur onesie with a hood that has two small black dot eyes and rounded green spikes, small tuft of brown hair, eyes closed, very round rosy cheeks, arms relaxed at its sides, soft blue blanket with yellow stars covering its legs and belly, high three-quarter angle, full body",
+                     "h":  1024
+                 },
+                 {
+                     "out":  "assets/concepts/bebe/pieces/corps-v2b.png",
+                     "style":  "s",
+                     "w":  1024,
+                     "prompt":  "top view of a round chubby baby asleep lying on its back with arms spread out, wearing a light-green dinosaur onesie and hood with two black dot eyes and soft spikes, brown hair tuft, closed eyes, rosy cheeks, a blue star-patterned blanket tucked up to its waist, full body",
+                     "h":  1024
+                 }
+             ],
+    "styles":  {
+                   "s":  ", 3D Pixar animated movie style, soft studio lighting, isolated on plain pure white background, no text"
+               }
+}

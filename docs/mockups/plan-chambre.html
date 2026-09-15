@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>CHUT ! Plan de la chambre — maquette</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; width: 1920px; height: 1080px; background: #101a33; font-family: "Fredoka", system-ui, sans-serif; color: #fff8ec; display: flex; }
+  .map { width: 1360px; height: 1080px; }
+  .side { flex: 1; padding: 36px 34px; }
+  h1 { margin: 0 0 6px; font-size: 44px; }
+  .sub { font-size: 22px; opacity: .75; margin-bottom: 26px; }
+  .row { display: flex; align-items: center; gap: 14px; margin: 12px 0; font-size: 22px; line-height: 1.25; }
+  .sw { width: 34px; height: 34px; border-radius: 10px; flex: none; border: 3px solid #fff8ec; }
+  h2 { font-size: 28px; margin: 26px 0 8px; }
+  .note { font-size: 20px; opacity: .85; line-height: 1.35; }
+  svg text { font-family: "Fredoka", system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<svg class="map" viewBox="0 0 1360 1080">
+  <!-- sol -->
+  <rect x="40" y="40" width="1280" height="1000" rx="18" fill="#c9965e"/>
+  <g stroke="#b5824c" stroke-width="3">
+    <line x1="40" y1="140" x2="1320" y2="140"/><line x1="40" y1="240" x2="1320" y2="240"/><line x1="40" y1="340" x2="1320" y2="340"/>
+    <line x1="40" y1="440" x2="1320" y2="440"/><line x1="40" y1="540" x2="1320" y2="540"/><line x1="40" y1="640" x2="1320" y2="640"/>
+    <line x1="40" y1="740" x2="1320" y2="740"/><line x1="40" y1="840" x2="1320" y2="840"/><line x1="40" y1="940" x2="1320" y2="940"/>
+  </g>
+  <rect x="40" y="40" width="1280" height="1000" rx="18" fill="none" stroke="#5b4a7a" stroke-width="22"/>
+
+  <!-- fenetre + rayon de lune -->
+  <rect x="560" y="30" width="240" height="24" rx="6" fill="#cfe3ff"/>
+  <polygon points="560,54 800,54 900,520 470,520" fill="#cfe3ff" opacity=".18"/>
+  <text x="680" y="90" text-anchor="middle" font-size="22" fill="#10203f">fenêtre · rayon de lune</text>
+
+  <!-- zones de rarete (degrade vers le berceau) -->
+  <ellipse cx="680" cy="330" rx="520" ry="330" fill="#ff4d5e" opacity=".10"/>
+  <ellipse cx="680" cy="330" rx="330" ry="210" fill="#ff4d5e" opacity=".14"/>
+
+  <!-- berceau + bebe -->
+  <rect x="500" y="180" width="360" height="230" rx="20" fill="#e9b04f" stroke="#7a4b1c" stroke-width="8"/>
+  <g stroke="#7a4b1c" stroke-width="5">
+    <line x1="540" y1="180" x2="540" y2="410"/><line x1="580" y1="180" x2="580" y2="410"/><line x1="620" y1="180" x2="620" y2="410"/>
+    <line x1="740" y1="180" x2="740" y2="410"/><line x1="780" y1="180" x2="780" y2="410"/><line x1="820" y1="180" x2="820" y2="410"/>
+  </g>
+  <ellipse cx="680" cy="295" rx="110" ry="80" fill="#ffe08a" stroke="#10203f" stroke-width="5"/>
+  <text x="680" y="288" text-anchor="middle" font-size="30" font-weight="700" fill="#10203f">BÉBÉ</text>
+  <text x="680" y="320" text-anchor="middle" font-size="20" fill="#10203f">regarde toute la chambre</text>
+  <circle cx="860" cy="200" r="22" fill="#9b5de5" stroke="#fff8ec" stroke-width="4"/>
+  <text x="860" y="208" text-anchor="middle" font-size="22" font-weight="700">L</text>
+
+  <!-- tapis central -->
+  <ellipse cx="680" cy="690" rx="230" ry="150" fill="#eadfc8" stroke="#bfae8c" stroke-width="6"/>
+  <text x="680" y="700" text-anchor="middle" font-size="24" fill="#6b5a3a">tapis = pas silencieux</text>
+
+  <!-- commodes + veilleuses -->
+  <rect x="80" y="380" width="180" height="300" rx="14" fill="#f4efe6" stroke="#8f8574" stroke-width="6"/>
+  <text x="170" y="535" text-anchor="middle" font-size="22" fill="#4a4336">commode</text>
+  <circle cx="170" cy="420" r="90" fill="#ff9a3c" opacity=".25"/>
+  <rect x="1100" y="380" width="180" height="300" rx="14" fill="#f4efe6" stroke="#8f8574" stroke-width="6"/>
+  <text x="1190" y="535" text-anchor="middle" font-size="22" fill="#4a4336">commode</text>
+  <circle cx="1190" cy="420" r="90" fill="#ff9a3c" opacity=".25"/>
+
+  <!-- bibliotheque + coffre -->
+  <rect x="90" y="80" width="260" height="110" rx="12" fill="#a86b3c" stroke="#5a3a1e" stroke-width="6"/>
+  <text x="220" y="143" text-anchor="middle" font-size="22">bibliothèque</text>
+  <rect x="1010" y="90" width="260" height="120" rx="16" fill="#7fb3e8" stroke="#3d6ea3" stroke-width="6"/>
+  <text x="1140" y="157" text-anchor="middle" font-size="22" fill="#10203f">coffre à jouets</text>
+
+  <!-- lattes qui grincent -->
+  <g fill="#ff4d5e" opacity=".85">
+    <rect x="330" y="545" width="110" height="26" rx="6"/><rect x="920" y="545" width="110" height="26" rx="6"/>
+    <rect x="620" y="465" width="120" height="26" rx="6"/>
+  </g>
+  <text x="385" y="600" text-anchor="middle" font-size="18">grince !</text>
+  <text x="975" y="600" text-anchor="middle" font-size="18">grince !</text>
+
+  <!-- cachettes sous les meubles (silence) -->
+  <rect x="80" y="690" width="180" height="40" rx="10" fill="#1b2a4f" opacity=".7"/>
+  <rect x="1100" y="690" width="180" height="40" rx="10" fill="#1b2a4f" opacity=".7"/>
+  <text x="170" y="717" text-anchor="middle" font-size="18">ombre = cachette</text>
+  <text x="1190" y="717" text-anchor="middle" font-size="18">ombre = cachette</text>
+
+  <!-- bases des joueurs le long du mur du bas -->
+  <g font-size="19" text-anchor="middle" fill="#10203f" font-weight="600">
+    <rect x="70" y="880" width="170" height="130" rx="18" fill="#5fd38d" stroke="#fff8ec" stroke-width="5"/><text x="155" y="940">boîte à</text><text x="155" y="964">chaussures</text>
+    <rect x="280" y="880" width="170" height="130" rx="18" fill="#5fd38d" stroke="#fff8ec" stroke-width="5"/><text x="365" y="952">pantoufle</text>
+    <rect x="490" y="880" width="170" height="130" rx="18" fill="#5fd38d" stroke="#fff8ec" stroke-width="5"/><text x="575" y="940">boîte de</text><text x="575" y="964">mouchoirs</text>
+    <rect x="700" y="880" width="170" height="130" rx="18" fill="#5fd38d" stroke="#fff8ec" stroke-width="5"/><text x="785" y="940">boîte de</text><text x="785" y="964">céréales</text>
+    <rect x="910" y="880" width="170" height="130" rx="18" fill="#5fd38d" stroke="#fff8ec" stroke-width="5"/><text x="995" y="952">tiroir ouvert</text>
+    <rect x="1120" y="880" width="170" height="130" rx="18" fill="#5fd38d" stroke="#fff8ec" stroke-width="5"/><text x="1205" y="940">carton de</text><text x="1205" y="964">déménagement</text>
+  </g>
+
+  <!-- points d'apparition par rarete -->
+  <g stroke="#10203f" stroke-width="4">
+    <circle cx="560" cy="760" r="18" fill="#ffffff"/><circle cx="800" cy="760" r="18" fill="#ffffff"/><circle cx="680" cy="820" r="18" fill="#ffffff"/>
+    <circle cx="300" cy="760" r="18" fill="#ffffff"/><circle cx="1060" cy="760" r="18" fill="#ffffff"/>
+    <circle cx="420" cy="440" r="18" fill="#3d7bff"/><circle cx="940" cy="440" r="18" fill="#3d7bff"/><circle cx="330" cy="280" r="18" fill="#3d7bff"/>
+    <circle cx="470" cy="210" r="18" fill="#ff9a3c"/><circle cx="890" cy="300" r="18" fill="#ff9a3c"/>
+  </g>
+</svg>
+
+<div class="side">
+  <h1>Plan de la chambre</h1>
+  <div class="sub">Vue de dessus · les joueurs mesurent 1/40e du berceau</div>
+
+  <div class="row"><div class="sw" style="background:#5fd38d"></div>Bases des joueurs : 6 cachettes le long du mur</div>
+  <div class="row"><div class="sw" style="background:#ffffff"></div>Jouets communs : loin du bébé, faciles</div>
+  <div class="row"><div class="sw" style="background:#3d7bff"></div>Jouets rares : à mi-chemin</div>
+  <div class="row"><div class="sw" style="background:#ff9a3c"></div>Jouets épiques : au pied du berceau</div>
+  <div class="row"><div class="sw" style="background:#9b5de5"></div>Légendaire : sur le matelas, à côté du bébé</div>
+  <div class="row"><div class="sw" style="background:#ff4d5e"></div>Lattes qui grincent : gros bruit</div>
+  <div class="row"><div class="sw" style="background:#eadfc8"></div>Tapis : on marche sans bruit</div>
+  <div class="row"><div class="sw" style="background:#1b2a4f"></div>Ombre sous les commodes : cachette pendant la chasse</div>
+
+  <h2>Le principe</h2>
+  <div class="note">
+    Plus un jouet vaut cher, plus il est près du bébé. Les débutants volent sur le tapis, les
+    téméraires grimpent jusqu'au matelas. Les veilleuses font de la lumière orange : on y voit bien,
+    mais le bébé aussi. Pendant la chasse, se figer ou se cacher dans l'ombre sauve le jouet.
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,1 @@
+﻿Set-Location 'C:\Users\jahidsyd\chut-geant'; node tools/upload-models.mjs assets/models/fbx assets/models/registry.json 'CHUT Vole le Geant - decor' *> 'C:\Users\jahidsyd\chut-geant\tools\gen3d\upload-lot1.log'

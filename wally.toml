@@ -1,0 +1,16 @@
+[package]
+name = "jahidsyd/chut-geant"
+version = "0.0.1"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+license = "MIT"
+
+# Regle du projet : une dependance n'entre ici que quand un fichier l'utilise.
+# Verifies le 07/09/2026 dans roblox-dev, a decommenter au moment de s'en servir :
+# Trove = "sleitnick/trove@1.8.0"
+# t = "osyrisrblx/t@3.1.1"
+
+[dependencies]
+
+[server-dependencies]
+# ProfileStore = "aspecky/profilestore@0.3.0"

@@ -1,0 +1,25 @@
+{
+  "styles": {
+    "object": ", single isolated object, stylized 3D game asset, Pixar toy-story style, smooth clean shapes, bright saturated colors, soft studio lighting, three-quarter view, centered, plain pure white background, no shadow, no text, no logo"
+  },
+  "jobs": [
+    { "out": "assets/concepts/jouet-nounours-v2.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a sitting teddy bear designer vinyl figure with a smooth glossy plastic surface, no fur, simple rounded chunky shapes, brown with a cream belly and muzzle, a red bow tie" },
+
+    { "out": "assets/concepts/bases/boite-chaussures.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "an open pastel blue cardboard shoe box with its lid leaning against one side, white tissue paper inside, cozy hideout" },
+    { "out": "assets/concepts/bases/pantoufle.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a single pink bunny slipper made of smooth soft plastic, no fur, simple rounded shapes, big round opening, two floppy ears" },
+    { "out": "assets/concepts/bases/boite-mouchoirs.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a cube tissue box with one tissue popping out of the top slot, pastel yellow with a white cloud pattern" },
+    { "out": "assets/concepts/bases/boite-cereales.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a colorful cereal box lying on its side with a round hole cut into the front like a little doorway, blank colorful packaging" },
+    { "out": "assets/concepts/bases/tiroir.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a single empty white wooden drawer with a round wooden knob, taken out of a dresser, seen open from above at an angle" },
+    { "out": "assets/concepts/bases/carton.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "an open brown kraft cardboard moving box with its four flaps open and a strip of tape" },
+
+    { "out": "assets/concepts/meubles/bibliotheque.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a tall wooden children's bookcase with three shelves of colorful books and a small toy on top" }
+  ]
+}

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>CHUT ! HUD — maquette</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #16223f;
+    --night-2: #223463;
+    --moon: #cfe3ff;
+    --lamp: #ff9a3c;
+    --lamp-2: #ffc266;
+    --calm: #5fd38d;
+    --warn: #ffcc3d;
+    --loud: #ff4d5e;
+    --ink: #0d1428;
+    --paper: #fff8ec;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    width: 1920px;
+    height: 1080px;
+    font-family: "Fredoka", "Arial Rounded MT Bold", system-ui, sans-serif;
+    color: var(--paper);
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 78% 18%, rgba(207, 227, 255, .35), transparent 40%),
+      radial-gradient(ellipse at 12% 70%, rgba(255, 154, 60, .28), transparent 45%),
+      linear-gradient(180deg, #2c4378 0%, #1a2a52 55%, #3b2a22 56%, #5a3c2a 100%);
+    position: relative;
+  }
+  .label { position: absolute; left: 24px; bottom: 18px; font-size: 18px; opacity: .55; }
+
+  /* Jauge de bruit : en haut au centre, forme de bulle de BD */
+  .noise {
+    position: absolute; top: 34px; left: 50%; transform: translateX(-50%);
+    width: 640px; padding: 16px 26px 20px;
+    background: rgba(13, 20, 40, .72);
+    border: 5px solid var(--paper); border-radius: 36px;
+    box-shadow: 0 8px 0 rgba(0,0,0,.35);
+  }
+  .noise-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .noise-title { font-size: 34px; font-weight: 700; letter-spacing: 1px; }
+  .noise-title small { font-size: 22px; opacity: .8; font-weight: 500; margin-left: 8px; }
+  .zzz { font-size: 30px; font-weight: 700; color: var(--moon); }
+  .bar {
+    height: 38px; border-radius: 20px; background: #0a1022;
+    border: 4px solid #0a1022; overflow: hidden; position: relative;
+  }
+  .fill {
+    height: 100%; width: 68%; border-radius: 16px;
+    background: linear-gradient(90deg, var(--calm) 0%, var(--warn) 55%, var(--loud) 100%);
+    box-shadow: inset 0 6px 0 rgba(255,255,255,.35);
+  }
+  .ticks { position: absolute; inset: 0; display: flex; justify-content: space-evenly; pointer-events: none; }
+  .ticks i { width: 4px; background: rgba(10,16,34,.45); }
+
+  /* Argent : en haut a gauche */
+  .cash {
+    position: absolute; top: 34px; left: 34px;
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 26px 14px 16px;
+    background: var(--lamp); color: var(--ink);
+    border: 5px solid var(--paper); border-radius: 30px;
+    box-shadow: 0 8px 0 #b35f16;
+  }
+  .coin {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff3b0, #ffd23d 45%, #d99a00);
+    border: 4px solid var(--ink);
+    display: grid; place-items: center; font-size: 34px; font-weight: 700;
+  }
+  .cash-value { font-size: 46px; font-weight: 700; line-height: 1; }
+  .cash-rate { font-size: 24px; font-weight: 600; opacity: .8; }
+
+  /* Jouet porte : en bas au centre */
+  .carry {
+    position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 20px;
+    padding: 14px 30px 14px 14px;
+    background: rgba(13, 20, 40, .78);
+    border: 5px solid var(--lamp-2); border-radius: 30px;
+  }
+  .toy-icon {
+    width: 92px; height: 92px; border-radius: 24px; background: var(--paper);
+    display: grid; place-items: center; font-size: 60px;
+  }
+  .carry-name { font-size: 36px; font-weight: 700; }
+  .carry-meta { display: flex; gap: 10px; margin-top: 6px; }
+  .pill { font-size: 22px; font-weight: 600; padding: 4px 14px; border-radius: 14px; background: var(--night-2); }
+  .pill.rare { background: #3d7bff; }
+  .pill.gold { background: #d9a400; color: var(--ink); }
+  .hint { font-size: 22px; opacity: .8; margin-top: 6px; }
+
+  /* Etat du geant : bandeau de chasse */
+  .hunt {
+    position: absolute; top: 250px; left: 50%; transform: translateX(-50%) rotate(-2deg);
+    padding: 18px 60px 22px;
+    background: var(--loud); color: var(--paper);
+    border: 7px solid var(--paper); border-radius: 28px;
+    box-shadow: 0 12px 0 #8e1b27;
+    text-align: center;
+  }
+  .hunt-title { font-size: 84px; font-weight: 700; line-height: 1; letter-spacing: 2px; }
+  .hunt-sub { font-size: 32px; font-weight: 600; margin-top: 6px; }
+  .hunt-timer {
+    position: absolute; right: -34px; top: -34px;
+    width: 88px; height: 88px; border-radius: 50%;
+    background: var(--paper); color: var(--loud);
+    border: 6px solid var(--ink);
+    display: grid; place-items: center; font-size: 46px; font-weight: 700;
+  }
+
+  /* Attrape : notification a droite */
+  .caught {
+    position: absolute; right: 34px; top: 170px; width: 380px;
+    padding: 18px 22px;
+    background: var(--paper); color: var(--ink);
+    border: 5px solid var(--ink); border-radius: 26px;
+    box-shadow: 0 8px 0 rgba(0,0,0,.35);
+  }
+  .caught b { display: block; font-size: 32px; }
+  .caught span { font-size: 22px; }
+
+  /* Legende des etats */
+  .states {
+    position: absolute; right: 34px; bottom: 44px;
+    display: flex; flex-direction: column; gap: 12px; align-items: flex-end;
+  }
+  .state { font-size: 24px; font-weight: 600; padding: 8px 18px; border-radius: 18px; border: 4px solid var(--paper); }
+  .state.sleep { background: var(--night-2); }
+  .state.wake { background: var(--warn); color: var(--ink); }
+  .state.hunt { background: var(--loud); }
+</style>
+</head>
+<body>
+  <div class="cash">
+    <div class="coin">$</div>
+    <div>
+      <div class="cash-value">12 480</div>
+      <div class="cash-rate">+37 / s</div>
+    </div>
+  </div>
+
+  <div class="noise">
+    <div class="noise-head">
+      <div class="noise-title">CHUT !<small>bébé dort</small></div>
+      <div class="zzz">z z Z</div>
+    </div>
+    <div class="bar"><div class="fill"></div><div class="ticks"><i></i><i></i><i></i></div></div>
+  </div>
+
+  <div class="hunt">
+    <div class="hunt-timer">7</div>
+    <div class="hunt-title">NE BOUGE PLUS !</div>
+    <div class="hunt-sub">Le géant regarde…</div>
+  </div>
+
+  <div class="caught">
+    <b>Attrapé !</b>
+    <span>Tu as bougé. Le Nounours retourne dans la chambre.</span>
+  </div>
+
+  <div class="carry">
+    <div class="toy-icon">🧸</div>
+    <div>
+      <div class="carry-name">Nounours</div>
+      <div class="carry-meta"><span class="pill rare">Rare</span><span class="pill gold">Doré ×2</span><span class="pill">2 porteurs</span></div>
+      <div class="hint">Ramène-le dans ta base · +50 / s</div>
+    </div>
+  </div>
+
+  <div class="states">
+    <div class="state sleep">Dort</div>
+    <div class="state wake">Se réveille (2 s)</div>
+    <div class="state hunt">Chasse (10 s)</div>
+  </div>
+
+  <div class="label">Maquette HUD — tous les états affichés en même temps pour validation</div>
+</body>
+</html>

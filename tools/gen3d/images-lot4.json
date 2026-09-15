@@ -1,0 +1,20 @@
+{
+  "styles": {
+    "part": ", single isolated object, stylized 3D game asset, Pixar animated movie style, smooth clean shapes, soft studio lighting, centered, plain pure white background, no shadow, no text",
+    "sheet": ", character reference sheet, stylized 3D render, Pixar animated movie style, soft studio lighting, plain pure white background, no text"
+  },
+  "jobs": [
+    { "out": "assets/concepts/bebe/pieces/tete-dort.png", "w": 1024, "h": 1024, "style": "part",
+      "prompt": "the head of a chubby cute baby wearing a green dinosaur hood with small soft spikes, eyes peacefully closed, rosy round cheeks, tiny nose, mouth slightly open, front view, head only, no body" },
+    { "out": "assets/concepts/bebe/pieces/tete-reveil.png", "w": 1024, "h": 1024, "style": "part",
+      "prompt": "the head of a chubby cute baby wearing a green dinosaur hood with small soft spikes, big wide open angry eyes, mouth wide open crying loudly, tears, rosy round cheeks, front view, head only, no body" },
+    { "out": "assets/concepts/bebe/pieces/main.png", "w": 1024, "h": 1024, "style": "part",
+      "prompt": "a single chubby baby hand wide open with spread fingers reaching forward to grab, green onesie sleeve cuff at the wrist, palm facing the viewer" },
+    { "out": "assets/concepts/bebe/pieces/corps-couverture.png", "w": 1024, "h": 1024, "style": "part",
+      "prompt": "the torso of a sleeping chubby baby in a green dinosaur onesie lying on its back under a soft blue blanket with yellow stars, seen from three-quarter view, no head" },
+    { "out": "assets/concepts/bebe/pieces/tetine.png", "w": 1024, "h": 1024, "style": "part",
+      "prompt": "a baby pacifier with a green shield and a small dinosaur shape on the button" },
+    { "out": "assets/concepts/bebe/bebe-d-planche.png", "w": 1344, "h": 768, "style": "sheet",
+      "prompt": "a chubby cute baby in a green dinosaur onesie with a hood, shown three times: sleeping lying on its back, waking up crying with open eyes, and reaching forward with one big open hand, consistent character design" }
+  ]
+}

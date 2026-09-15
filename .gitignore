@@ -1,0 +1,44 @@
+# Dependances Wally
+Packages/
+ServerPackages/
+DevPackages/
+
+# Artefacts de build Roblox
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+build.rbxl
+
+# Genere par les outils
+sourcemap.json
+roblox.yml
+globalTypes.d.luau
+
+# Secrets : cles Open Cloud, jamais dans le depot
+.env
+.env.*
+
+# Systeme
+.DS_Store
+Thumbs.db
+
+# Pack d armes sci-fi : source lourde, importee a la main dans Studio
+assets/scifi-pack/
+tools/shots/
+
+# Les fichiers d etape du MCP et les captures : du jetable, pas du depot.
+tools/queue/
+tools/shots/
+tools/daemon.log
+tools/rojo.log
+tools/gen3d/*.log
+*.log
+
+# Binaires generes lourds (~1,5 Go, fichiers de plus de 50 Mo) : modeles 3D, concepts, textures, captures et videos
+# de test. Ils restent sur le PC ; les registres d identifiants Roblox (JSON) et les icones d interface sont gardes.
+assets/models/
+assets/concepts/
+assets/textures/
+docs/captures*
+docs/videos/

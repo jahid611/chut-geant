@@ -1,0 +1,156 @@
+{
+  "style_icone": "Cute glossy 3D cartoon mobile game icon, soft rounded shapes, smooth glossy plastic and soft plush materials, pastel colors with soft highlights, single object centered with margin, isolated on a pure white background, no text, no letters, no numbers, no logo, no ground shadow. Subject: ",
+  "style_3d": "3D render of a single cute stylized cartoon object for a kids video game, toy-like proportions, soft pastel colors, clean simple shapes, three-quarter view from slightly above, the whole object fully visible and centered, plain pure white background, studio lighting, no text, no logo, no people. Object: ",
+  "icones": [
+    [
+      "pouvoir-furie",
+      "a chunky pink lightning bolt with little speed lines and tiny sparkles"
+    ],
+    [
+      "pouvoir-ventouse",
+      "a real red rubber suction cup (plunger cup) with a round knob handle on top, slightly translucent glossy rubber, seen from three-quarter view"
+    ],
+    [
+      "pouvoir-cape",
+      "a dark purple hooded magic cape with tiny golden stars, floating"
+    ],
+    [
+      "pouvoir-berceuse",
+      "a small wooden music box with a crescent moon on top and floating music notes"
+    ],
+    [
+      "amelioration-sac",
+      "a small pink kids backpack with rounded pockets"
+    ],
+    [
+      "amelioration-aimant",
+      "a red and silver horseshoe magnet attracting a small baby pacifier"
+    ],
+    [
+      "amelioration-oreille",
+      "a cute cartoon ear with curved sound wave lines"
+    ],
+    [
+      "cosmetique-trainee",
+      "a rainbow ribbon swoosh trail with sparkling stars, nothing else, no phone, no device"
+    ],
+    [
+      "cosmetique-danse",
+      "a shiny disco ball with music notes"
+    ],
+    [
+      "cosmetique-contour",
+      "a small wooden toy block glowing with a thick bright golden outline aura and sparkles, nothing else"
+    ],
+    [
+      "cosmetique-decor",
+      "a tiny cozy play tent tipi with fairy lights"
+    ],
+    [
+      "menu-quetes",
+      "a single rolled parchment scroll with a big green check mark, simple, nothing else"
+    ],
+    [
+      "menu-collection",
+      "an open sticker album book with colorful toy stickers"
+    ],
+    [
+      "menu-nuits",
+      "a sleeping crescent moon wearing a night cap with an upward arrow of stars"
+    ],
+    [
+      "menu-cadeaux",
+      "a pink gift box with a big yellow ribbon bow, nothing else, no phone"
+    ],
+    [
+      "menu-roue",
+      "a colorful prize wheel with a pointer"
+    ],
+    [
+      "menu-pleine-lune",
+      "a round glowing pale yellow full moon with soft craters and three tiny stars, nothing else"
+    ],
+    [
+      "menu-amis",
+      "two small teddy bears hugging"
+    ],
+    [
+      "menu-pass",
+      "a golden ticket with a star"
+    ],
+    [
+      "menu-classement",
+      "a golden trophy cup with a pacifier on top"
+    ]
+  ],
+  "objets3d": [
+    [
+      "3d-doudou-lapin",
+      "a small floppy plush bunny comforter blanket toy (doudou), light blue and pink"
+    ],
+    [
+      "3d-ventouse",
+      "a big red rubber suction cup with a round knob handle on top, glossy translucent rubber, attached to a short stretchy spring cord"
+    ],
+    [
+      "3d-sac-a-dos",
+      "a small pink kids backpack with rounded pockets and two straps"
+    ],
+    [
+      "3d-guirlande",
+      "a short string of warm fairy light bulbs hanging between two small wooden posts"
+    ],
+    [
+      "3d-tipi",
+      "a small kids play tent tipi made of white fabric with pastel triangle pattern and wooden poles"
+    ],
+    [
+      "3d-pouf",
+      "a round soft bean bag chair, pastel yellow fabric"
+    ],
+    [
+      "3d-lampe-etoile",
+      "a star shaped night lamp on a small round base, pale yellow"
+    ],
+    [
+      "3d-trophee",
+      "a golden trophy cup on a wooden base with a baby pacifier sculpture on top"
+    ],
+    [
+      "3d-capuche-dino",
+      "a green dinosaur hood hat with little soft spikes and cute eyes, wearable costume hood"
+    ],
+    [
+      "3d-oreilles-lapin",
+      "a headband with tall fluffy white and pink bunny ears"
+    ],
+    [
+      "3d-coffre-dore",
+      "a golden treasure toy chest with the lid open and star decorations"
+    ],
+    [
+      "3d-frigo",
+      "a rounded retro kitchen fridge, pastel mint with chrome handles"
+    ],
+    [
+      "3d-table-cuisine",
+      "a wooden kitchen table with four wooden chairs"
+    ],
+    [
+      "3d-chaise-haute",
+      "a baby high chair made of white wood with a tray"
+    ],
+    [
+      "3d-plan-travail",
+      "a kitchen counter with a sink, cabinets and drawers, cream and wood"
+    ],
+    [
+      "3d-cuisiniere",
+      "a small retro kitchen stove oven with four burners, pastel blue"
+    ],
+    [
+      "3d-panneau-classement",
+      "a small chalkboard sign on a wooden easel stand, blank board"
+    ]
+  ]
+}

@@ -1,0 +1,9 @@
+std = "roblox"
+
+# Code tiers vendore : on ne le formate pas et on ne le corrige pas.
+exclude = ["src/server/Vendor/*.luau", "src/server/Vendor/**/*.luau"]
+
+[lints]
+mixed_table = "warn"
+shadowing = "warn"
+unused_variable = "warn"

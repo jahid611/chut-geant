@@ -1,0 +1,17 @@
+{
+  "style_icone": "Cute glossy 3D cartoon mobile game icon, soft rounded shapes, smooth glossy plastic and soft plush materials, pastel colors with soft highlights, single object centered with margin, isolated on a pure white background, no text, no letters, no numbers, no logo, no ground shadow. Subject: ",
+  "style_3d": "3D render of a single cute stylized cartoon object for a kids video game, toy-like proportions, soft pastel colors, clean simple shapes, three-quarter view from slightly above, the whole object fully visible and centered, plain pure white background, studio lighting, no text, no logo, no people. Object: ",
+  "icones": [
+    ["icone-trainee-arc", "a glowing rainbow ribbon swoosh trail, nothing else"],
+    ["icone-trainee-etoiles", "a sparkling golden trail made of little shooting stars, nothing else"],
+    ["icone-trainee-coeurs", "a pink swoosh trail made of small glossy hearts, nothing else"],
+    ["icone-danse-joie", "a cute cheerful plush toy dancing with arms up and music notes, nothing else"],
+    ["icone-danse-robot", "a small cute toy robot doing a robot dance with music notes, nothing else"],
+    ["icone-danse-toupie", "a spinning top toy whirling fast with motion swirls and music notes, nothing else"],
+    ["icone-contour-dore", "a toy teddy bear surrounded by a thick glowing golden outline, nothing else"],
+    ["icone-contour-arc", "a toy teddy bear surrounded by a thick glowing rainbow outline, nothing else"]
+  ],
+  "objets3d": [
+    ["3d-trampoline", "a round kids backyard trampoline with a bright blue jumping mat, soft yellow safety padding around the edge and short sturdy legs, no net"]
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "styles": {
+    "scene": ", cinematic 3D render, Pixar animated movie style, soft volumetric lighting, highly detailed, vibrant colors, video game key art",
+    "object": ", single isolated object, stylized 3D game asset, Pixar toy-story style, smooth clean shapes, bright saturated colors, soft studio lighting, three-quarter view, centered, plain pure white background, no shadow, no text",
+    "texture": ", seamless tileable texture, flat top-down orthographic view, even diffuse lighting, no shadows, no perspective, high detail"
+  },
+  "jobs": [
+    { "out": "assets/concepts/bebe/bebe-a.png", "w": 1024, "h": 1024, "style": "scene",
+      "prompt": "a chubby cute giant baby sleeping peacefully in a wooden crib at night, light blue onesie, knitted beanie with a pompom, pacifier in mouth, hugging a plush bunny, rosy cheeks, moonlight and warm orange night lamp glow" },
+    { "out": "assets/concepts/bebe/bebe-b.png", "w": 1024, "h": 1024, "style": "scene",
+      "prompt": "a chubby cute baby with a single curly hair tuft sleeping on its back in a white crib at night, yellow pajamas with a star pattern, big pacifier, cozy blanket up to its chest, moonlit nursery" },
+    { "out": "assets/concepts/bebe/bebe-c.png", "w": 1024, "h": 1024, "style": "scene",
+      "prompt": "a round-faced cute baby with two tiny pigtails sleeping on its side in a pastel pink crib at night, holding a small teddy bear, pacifier, star-patterned blanket, moonlit nursery" },
+    { "out": "assets/concepts/bebe/bebe-d.png", "w": 1024, "h": 1024, "style": "scene",
+      "prompt": "a funny chubby baby sleeping with arms spread wide in a wooden crib at night, mouth slightly open, green dinosaur onesie with a hood, blanket kicked aside, night nursery" },
+
+    { "out": "assets/concepts/chambre/chambre-dessus.png", "w": 1344, "h": 768, "style": "scene",
+      "prompt": "top-down isometric view of a cozy baby nursery at night, wooden crib in the center, white dresser with a night lamp, toy chest, round cream rug, small bookshelf, window with moonlight, scattered toys on a light wooden floor, clear readable layout, stylized game level art" },
+    { "out": "assets/concepts/chambre/chambre-large.png", "w": 1344, "h": 768, "style": "scene",
+      "prompt": "wide low-angle shot from the floor of a baby nursery at night, towering wooden crib with a sleeping baby, star and moon mobile above the crib, glowing orange mushroom night lamp on a dresser, toy chest, round rug, blue moonlight beams through the window, giant sense of scale" },
+
+    { "out": "assets/concepts/meubles/berceau.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "an empty wooden baby crib with vertical bars, white and light oak wood" },
+    { "out": "assets/concepts/meubles/mobile.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a hanging baby crib mobile with plush yellow moon and stars" },
+    { "out": "assets/concepts/meubles/commode.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a white baby nursery dresser with three drawers and round wooden knobs" },
+    { "out": "assets/concepts/meubles/veilleuse.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a cute night lamp shaped like a red mushroom with white dots and a warm orange glow" },
+    { "out": "assets/concepts/meubles/coffre.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a wooden toy chest with a rounded lid, painted pastel blue with a white star" },
+    { "out": "assets/concepts/meubles/etagere.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a small wooden wall bookshelf holding colorful children's books" },
+    { "out": "assets/concepts/meubles/hochet.png", "w": 1024, "h": 1024, "style": "object",
+      "prompt": "a colorful baby rattle toy with a round top and a handle" },
+
+    { "out": "assets/textures/parquet.png", "w": 1024, "h": 1024, "style": "texture",
+      "prompt": "warm light oak wooden floor planks" },
+    { "out": "assets/textures/papier-peint.png", "w": 1024, "h": 1024, "style": "texture",
+      "prompt": "pastel blue nursery wallpaper pattern with small white clouds and tiny yellow stars" },
+    { "out": "assets/textures/tapis.png", "w": 1024, "h": 1024, "style": "texture",
+      "prompt": "soft cream knitted wool fabric" }
+  ]
+}

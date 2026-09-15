@@ -1,0 +1,9 @@
+{
+  "languageMode": "strict",
+  "aliases": {
+    "Shared": "src/shared",
+    "Server": "src/server",
+    "Client": "src/client",
+    "Packages": "Packages"
+  }
+}

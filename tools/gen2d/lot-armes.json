@@ -1,0 +1,15 @@
+{
+  "style_icone": "Cute glossy 3D cartoon mobile game icon, soft rounded shapes, smooth glossy plastic and soft plush materials, pastel colors with soft highlights, single object centered with margin, isolated on a pure white background, no text, no letters, no numbers, no logo, no ground shadow. Subject: ",
+  "style_3d": "",
+  "icones": [
+    ["icone-arme-batte", "a pink toy baseball bat, glossy, tilted diagonally, nothing else"],
+    ["icone-arme-tapette", "a cute plastic fly swatter with a mint green mesh head and pink handle, tilted diagonally, nothing else"],
+    ["icone-arme-oreiller", "a fluffy white and pink pillow with small hearts, slightly squished, nothing else"],
+    ["icone-arme-epee", "a colorful foam toy sword, blue blade and yellow handle, tilted diagonally, nothing else"],
+    ["icone-arme-chausson", "a single fluffy pink slipper seen from the side, nothing else"],
+    ["icone-arme-pistolet", "a translucent turquoise and orange toy water gun with a water splash, nothing else"],
+    ["icone-arme-marteau", "a red and yellow squeaky toy hammer, tilted diagonally, nothing else"],
+    ["icone-arme-baguette", "a pink magic wand with a glowing golden star tip and sparkles, tilted diagonally, nothing else"]
+  ],
+  "objets3d": []
+}
