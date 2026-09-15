@@ -21,11 +21,11 @@ local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 
+local BabyHead = require(script.Parent.Parent.Ui.BabyHead)
 local Theme = require(script.Parent.Parent.Ui.Theme)
 
 local BUBBLE = 300
 local PILL_HEIGHT = 64
-local GAZE_NAME = "Regard"
 
 local BabyPovController = {}
 
@@ -121,40 +121,20 @@ local function show(endsAt: number): ()
     viewport.Parent = bubble
     Theme.corner(viewport, BUBBLE // 2)
 
-    local clone = crying:Clone()
-    for _, descendant in clone:GetDescendants() do
-        local strip = descendant.Name == GAZE_NAME
-            or descendant:IsA("Light")
-            or descendant:IsA("LuaSourceContainer")
-            or descendant:IsA("ParticleEmitter")
-        if strip then
-            descendant:Destroy()
-        elseif descendant:IsA("BasePart") then
-            -- le serveur n'a peut-etre pas encore rendu le bebe qui pleure visible
-            descendant.Transparency = 0
-            descendant.Anchored = true
-        end
+    -- copie du bebe qui pleure dans sa pose couchee de reference (Ui/BabyHead)
+    local head = BabyHead.build(viewport)
+    if head == nil then
+        hide()
+        return
     end
-    clone.Parent = viewport
-    -- Pose couchee de reference (celle du bebe endormi « Dort ») : a l'ouverture de la bulle le bebe qui pleure est
-    -- souvent en train de se relever, ses axes changeaient et la camera cadrait le haut de la capuche (capture du
-    -- 15/09). Couche, le visage regarde le LookVector et la tete est du cote UpVector.
-    local giantModel = crying.Parent
-    local sleeping = if giantModel then giantModel:FindFirstChild("Dort") else nil
-    if sleeping and sleeping:IsA("Model") then
-        clone:PivotTo(sleeping:GetPivot())
-    end
-    local center, size = clone:GetBoundingBox()
-    -- A 0,36 de la longueur la camera visait le sommet du crane : le visage est plus pres du centre du corps.
     -- 0,2 / 0,55 cadrait le front de trop pres (capture du 15/09) : visage entier, un peu plus loin.
-    local head = center.Position + center.UpVector * size.Y * 0.13
-    local eye = head + center.LookVector * math.max(size.Y * 0.8, 4)
+    local eye = head.point + head.frame.LookVector * math.max(head.size.Y * 0.8, 4)
     local camera = Instance.new("Camera")
     camera.FieldOfView = 40
-    camera.CFrame = CFrame.lookAt(eye, head, center.UpVector)
+    camera.CFrame = CFrame.lookAt(eye, head.point, head.frame.UpVector)
     camera.Parent = viewport
     viewport.CurrentCamera = camera
-    viewport.LightDirection = -center.LookVector
+    viewport.LightDirection = -head.frame.LookVector
 
     tear(bubble, 0.4, 0, myToken)
     tear(bubble, 0.6, 0.5, myToken)

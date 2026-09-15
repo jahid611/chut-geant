@@ -28,6 +28,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Tuning = require(Shared:WaitForChild("Tuning"))
 
+local Screamer = require(script.Parent.Parent.Ui.Screamer)
 local Sfx = require(script.Parent.Parent.Ui.Sfx)
 local Theme = require(script.Parent.Parent.Ui.Theme)
 
@@ -1318,6 +1319,10 @@ local function onCaught(reason: string, launch: Vector3): ()
             stunStars(character, stun + 0.8)
         end)
     else
+        -- screamer (tete du bebe qui fonce sur l'ecran, rire) : seulement pour les captures du bebe
+        if Screamer.isBabyReason(reason) then
+            Screamer.play()
+        end
         local from = babyOrigin()
         if from then
             cryWave(from, root.Position)

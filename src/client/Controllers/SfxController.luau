@@ -19,6 +19,7 @@ local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 
+local Screamer = require(script.Parent.Parent.Ui.Screamer)
 local Sfx = require(script.Parent.Parent.Ui.Sfx)
 
 local INTERIOR_BELOW_Y = -400
@@ -52,8 +53,11 @@ function SfxController:Init(): () end
 
 function SfxController:Start(): ()
     local caught = Remotes.Get("Caught") :: RemoteEvent
-    caught.OnClientEvent:Connect(function()
-        Sfx.play("caught")
+    caught.OnClientEvent:Connect(function(reason: unknown)
+        -- capture du bebe : le rire du screamer remplace le « boing » comique (Ui/Screamer)
+        if not Screamer.isBabyReason(reason) then
+            Sfx.play("caught")
+        end
         Sfx.play("caughtWhoosh")
     end)
 

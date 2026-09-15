@@ -8,8 +8,9 @@
     - tic-tac angoissant pendant tout compte a rebours (RoomEvent phase warn, jouet piege TrapArmed, reveil du
       bebe GiantState Waking) : il accelere et monte sur les dernieres secondes, s'arrete a zero ou quand
       l'evenement passe a open/end ;
-    - jauge de bruit (NoiseState) : son de jauge qui se remplit quand elle monte (plus aigu plus elle est haute),
-      plus grave et plus doux quand elle redescend, silence quand elle ne bouge pas.
+    - jauge de bruit (NoiseState) : battement de coeur doux (demande utilisateur du 15/09 : l'ancien son de moteur
+      etait « horrible »), seulement quand la jauge monte au-dessus de HEART_START ; plus fort et plus rapide plus
+      elle est haute, coupe en HEART_FADE secondes des qu'elle redescend ou ne bouge plus.
 ]]
 
 local Players = game:GetService("Players")
@@ -29,8 +30,8 @@ local SOUNDS = {
     music = "rbxassetid://9047796475",
     -- « TICK TOCK 06 120BPM » (Pro Sound Effects) : comptes a rebours
     tick = "rbxassetid://9043366464",
-    -- « Motor Wind Up 4 » (Pro Sound Effects) : jauge qui se remplit / se vide
-    gauge = "rbxassetid://9116991804",
+    -- « HEARTBEAT 02 96BPM » (Pro Sound Effects, Epic Score) : battement de coeur quand la jauge monte
+    gauge = "rbxassetid://9043365842",
 }
 
 local MUSIC_VOLUME = 0.25
@@ -44,8 +45,13 @@ local TICK_RUSH = 3
 -- apres le dernier mouvement (les mises a jour arrivent environ 10 fois par seconde).
 local GAUGE_MIN_STEP = 0.004
 local GAUGE_HOLD = 0.35
-local GAUGE_RISE_VOLUME = 0.35
-local GAUGE_FALL_VOLUME = 0.2
+-- Battement de coeur : jauge minimale, volume et vitesse de lecture de HEART_START a la jauge pleine.
+local HEART_START = 0.35
+local HEART_VOLUME_MIN = 0.12
+local HEART_VOLUME_MAX = 0.4
+local HEART_SPEED_MIN = 0.9
+local HEART_SPEED_MAX = 1.35
+local HEART_FADE = 0.15
 
 local SoundscapeController = {}
 
@@ -153,24 +159,26 @@ local function step(dt: number): ()
         end
     end
 
-    -- Jauge : volume et hauteur lisses vers la cible
-    local moving = os.clock() - gaugeMovedAt < GAUGE_HOLD
-    local targetVolume, targetSpeed = 0, gauge.PlaybackSpeed
-    if moving and gaugeDirection > 0 then
-        targetVolume = GAUGE_RISE_VOLUME
-        targetSpeed = 0.8 + 0.8 * gaugeFraction
-    elseif moving and gaugeDirection < 0 then
-        targetVolume = GAUGE_FALL_VOLUME
-        targetSpeed = 0.6 + 0.3 * gaugeFraction
+    -- Jauge : battement de coeur quand elle monte au-dessus de HEART_START, volume et vitesse lisses vers la cible ;
+    -- montee rapide, fondu lent.
+    local rising = os.clock() - gaugeMovedAt < GAUGE_HOLD and gaugeDirection > 0
+    local level = math.clamp((gaugeFraction - HEART_START) / (1 - HEART_START), 0, 1)
+    local targetVolume = if rising and gaugeFraction >= HEART_START
+        then HEART_VOLUME_MIN + (HEART_VOLUME_MAX - HEART_VOLUME_MIN) * level
+        else 0
+    local targetSpeed = HEART_SPEED_MIN + (HEART_SPEED_MAX - HEART_SPEED_MIN) * level
+    if targetVolume > gauge.Volume then
+        gauge.Volume += (targetVolume - gauge.Volume) * math.clamp(dt * 6, 0, 1)
+    else
+        -- extinction courte et bornee (au plus HEART_FADE s) des que la jauge ne monte plus ou passe sous HEART_START
+        gauge.Volume = math.max(gauge.Volume - dt * HEART_VOLUME_MAX / HEART_FADE, targetVolume)
     end
-    local k = math.clamp(dt * 8, 0, 1)
-    gauge.Volume += (targetVolume - gauge.Volume) * k
-    gauge.PlaybackSpeed += (targetSpeed - gauge.PlaybackSpeed) * k
+    gauge.PlaybackSpeed += (targetSpeed - gauge.PlaybackSpeed) * math.clamp(dt * 3, 0, 1)
     if gauge.Volume > 0.01 then
         if not gauge.IsPlaying then
             gauge:Play()
         end
-    elseif gauge.IsPlaying and not moving then
+    elseif gauge.IsPlaying then
         gauge:Stop()
     end
 end

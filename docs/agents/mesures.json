@@ -9,5 +9,16 @@
     "remarques_graves": 3,
     "playtests_rates": 0,
     "duree_min": 33
+  },
+  {
+    "date": "2026-09-15T12:12:23.921Z",
+    "tache": "Screamer et sons de capture. (1) Quand le BÉBÉ attrape le joueur (raisons bebe : moved, jumped, seen...), et seulement pour le joueur attrapé : screamer plein écran, la tête du bébé qui pleure (copie du modèle workspace.Geant.Pleure dans un ViewportFrame, comme BabyPovController) fonce vers l'écran à vitesse moyenne (environ 0,6 à 0,8 s d'approche, grossit jusqu'à remplir l'écran, léger tremblement), puis disparaît en fondu ; pas pour le chien ni pour maman ; ne pas casser les effets existants (OUIIIN, propulsion, étoiles) ; rien d'autre ne doit rester affiché par-dessus. (2) Pendant ce screamer, et seulement pour le joueur attrapé, rire d'enfant inquiétant : son Pro Sound Effects rbxassetid://9125368136 (rire de bébé, 5 s), ralenti (PlaybackSpeed vers 0,8) avec un peu de réverbération pour un effet machiavélique. (3) Le son de jauge actuel (Motor Wind Up 4, rbxassetid://9116991804, SoundscapeController) est jugé horrible par l'utilisateur : le remplacer par un battement de coeur doux et classique, rbxassetid://9043365842 (HEARTBEAT 02 96BPM, Pro Sound Effects), volume bas, qui accélère et monte un peu quand la jauge est haute, silencieux quand elle est basse ou redescend. Texte en français, aucun emoji.",
+    "type": "ui",
+    "implementeur": "claude",
+    "relecteur": "gpt",
+    "iterations": 1,
+    "remarques_graves": 0,
+    "playtests_rates": 0,
+    "duree_min": 19
   }
 ]
