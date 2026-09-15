@@ -1,0 +1,13 @@
+{
+  "note": "Icônes d'armes v4 : rendu Studio exact de chaque modèle (ServerStorage.WeaponModels, angle 0) -> FLUX img2img à denoise bas -> découpe par la silhouette du rendu. L'oreiller n'est qu'une Part en marbre : icône après son vrai modèle 3D.",
+  "style": "glossy 3D toy game icon, soft pastel studio lighting, smooth plastic and rubber materials, clean bright colors, single object centered, plain light grey background, no text, no hands",
+  "armes": [
+    { "id": "WeaponFlySwatter", "cle": "iconeArmeTapette", "angle": 0, "objet": "a lime green plastic fly swatter with a perforated square head and a long thin handle" },
+    { "id": "WeaponPinkBat", "cle": "iconeArmeBatte", "angle": 0, "objet": "a pink wooden baseball bat with a light pink handle" },
+    { "id": "WeaponFoamSword", "cle": "iconeArmeEpee", "angle": 0, "objet": "a toy foam sword with a grey blade, a blue crossguard and a red handle with a round red pommel" },
+    { "id": "WeaponSlipper", "cle": "iconeArmeChausson", "angle": 0, "objet": "a big blue flip-flop sandal with a dark grey strap" },
+    { "id": "WeaponWaterGun", "cle": "iconeArmePistolet", "angle": 0, "objet": "an orange toy water gun with a light blue water tank and a red and white nozzle" },
+    { "id": "WeaponSqueakyHammer", "cle": "iconeArmeMarteau", "angle": 0, "objet": "a squeaky toy hammer with a big red ribbed head and a yellow handle" },
+    { "id": "WeaponMagicWand", "cle": "iconeArmeBaguette", "angle": 0, "objet": "a black magic wand with white tips" }
+  ]
+}
