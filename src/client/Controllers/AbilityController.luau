@@ -231,13 +231,14 @@ function AbilityController:Start(): ()
     bar.Parent = gui
     local barScale = Theme.fit(bar, Theme.HUD_FACTOR)
     -- Collee en bas ; quand on porte un jouet, au-dessus de la carte du jouet (HudController : 142 de haut a 18 du
-    -- bas) et de l'aide « G : poser / F : lancer » (CarryController : 40 de haut a 118 du bas), meme echelle HUD.
+    -- bas) et de l'aide « G : poser / F : lancer » (CarryController : 40 de haut, juste au-dessus de la carte), meme
+    -- echelle HUD.
     local function placeBar(): ()
         local s = barScale.Scale
         local bottom = 10
         if player:GetAttribute("CarriedToyId") ~= nil then
             local cardTop = 18 + 142 * s + 34 -- + la ligne « + sac » au-dessus de la carte
-            local hintTop = 118 + 40 * s
+            local hintTop = 18 + 142 * s + 6 + 40 * s -- l'aide est posee juste au-dessus de la carte
             bottom = math.max(cardTop, hintTop) + 10
         end
         bar.Position = UDim2.new(0.5, 0, 1, -math.floor(bottom))

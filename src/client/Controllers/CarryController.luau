@@ -98,10 +98,16 @@ function CarryController:Start(): ()
     holder.Name = "Aide"
     holder.BackgroundTransparency = 1
     holder.Size = UDim2.fromOffset(420, 40)
-    holder.Position = UDim2.new(0.5, 0, 1, -118)
     holder.AnchorPoint = Vector2.new(0.5, 1)
     holder.Parent = gui
-    Theme.fit(holder, Theme.HUD_FACTOR)
+    local holderScale = Theme.fit(holder, Theme.HUD_FACTOR)
+    -- Juste au-dessus de la carte du jouet porte (HudController : 142 de haut a 18 du bas, meme echelle HUD). A
+    -- 118 px fixes, l'aide recouvrait l'etiquette de rarete des que l'echelle depassait 0,7 (capture du 15/09).
+    local function placeHint(): ()
+        holder.Position = UDim2.new(0.5, 0, 1, -math.floor(18 + 142 * holderScale.Scale + 6))
+    end
+    holderScale:GetPropertyChangedSignal("Scale"):Connect(placeHint)
+    placeHint()
     hint = Theme.text(
         holder,
         "Touches",
