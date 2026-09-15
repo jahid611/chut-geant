@@ -64,5 +64,16 @@
     "remarques_graves": 0,
     "playtests_rates": 0,
     "duree_min": 17
+  },
+  {
+    "date": "2026-09-15T15:55:36.063Z",
+    "tache": "Mission du jour « Vole la tétine du bébé » (PacifierMissionService) : la tétine n'apparaît plus. Journal du playtest du 15/09 : « placement refusé par PlaceAt : pièce ou sol non admissible » quand elle est lâchée sur le matelas du berceau (cible Target du trampoline, zone GiantRoom). ToyPlacement n'autorise que le sol et les tapis. Objectif : la tétine apparaît posée sur le matelas du berceau, stable, à la bonne échelle (SCALE 1,7), prenable, et réapparaît 20 s après avoir été perdue. Chemin serveur limité à cette mission (pas d'ouverture des meubles aux jouets ordinaires), protections physiques conservées, anti-triche inchangé. Vérifier par capture la tétine sur le matelas et par journaux l'absence d'avertissement.",
+    "type": "gameplay",
+    "implementeur": "gpt",
+    "relecteur": "claude",
+    "iterations": 2,
+    "remarques_graves": 2,
+    "playtests_rates": 1,
+    "duree_min": 19
   }
 ]

@@ -37,6 +37,36 @@ Le jouet temporaire expire par le service existant après 45 s. Arrêter le play
 
 ## État de ce passage
 
+### Tétine sur le matelas (15/09)
+
+Le même banc accepte `scenario = "mission"` après apparition de la mission. Cette branche ne modifie
+aucune instance : elle vérifie les neuf appuis sous la pose retenue près de Target, la taille ×1,7, l'unicité,
+l'ancrage et la stabilité après 7 s. Elle vérifie aussi que `ToyPlacement.Ground` refuse toujours ce
+point aux appels ordinaires. Lire `[TEST-PHYSIQUE] OK mission` après 8 s et capturer le contact avec
+le matelas, puis une vue incluant le joueur pour l'échelle.
+
+Après G2-R1, le centre peut se décaler de ±9 studs sur X/Z. Le banc imprime les neuf sondes
+(instance, normale, écart de hauteur au repère et jeu sous la base), même si l'une est refusée.
+La base doit toucher le plus haut appui ; le jeu sous les autres sondes ne dépasse pas 0,25 stud.
+Les sondes ne remplacent pas la capture : vérifier aussi visuellement les reliefs entre les points.
+
+Pour le retour, envoyer `scenario = "mission_retour"` avant un dépôt réel ou une disparition par le jeu
+(dans les 120 s). Ce scénario observe `Destroying` sans détruire le jouet lui-même ; il exige un seul
+remplacement entre 20 et 23 s, avec 0,05 s de tolérance pour la livraison différée de `Destroying`.
+Il ne prouve pas le retour après une simple capture laissant la tétine libre. Rejouer `mission` après
+chaque remplacement pour vérifier contact et stabilité. Répéter au moins cinq cycles et lire les journaux
+de démarrage : aucun avertissement de pose ne doit apparaître dans le scénario normal.
+Si aucune mission n'apparaît, relever le diagnostic des neuf sondes du meilleur candidat après les
+392 poses refusées au maximum ; distinguer instance étrangère, normale, écartY, dispersion et obstacle.
+La reprise après 20 s doit rester unique. Ne pas élargir les seuils sans les mesures du vrai matelas.
+
+Compléter avec la prise pendant `Hunting` (main, ventouse, sac), les refus pendant le sommeil,
+hors portée et après réussite quotidienne, puis le dépôt coffre/tipi et le retour unique 20 s
+après destruction. Une capture qui laisse la tétine au sol ne programme pas de retour : cycle conservé.
+Tester aussi la disparition du modèle ou du berceau au démarrage et les refus de support non horizontal.
+Ces branches et ces scénarios n'ont pas été exécutés lors de la correction, y compris G2-R1 : les appels MCP
+`execute_luau` et `solo_playtest status` ont été refusés par la politique d'approbation.
+
 Script préparé, **non exécuté dans Studio** : l'appel MCP `solo_playtest status` a été
 refusé par la politique d'approbation de l'environnement. Aucune mesure en jeu ni
 validation visuelle n'est revendiquée ici.

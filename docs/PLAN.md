@@ -4,6 +4,34 @@ Lire ce fichier en premier à chaque reprise de session. Cocher au fur et à mes
 
 ## Concept
 
+### Tétine sur le matelas — correction ciblée (validation en jeu en attente)
+
+- `PacifierMissionService` clone la tétine et applique ×1,7 avant les mesures. Un rayon depuis
+  le `Target` du trampoline de la chambre +30 studs doit toucher un descendant de `Chambre.Decor.Crib`
+  avec une normale quasi verticale. Après G2-R1 : recherche bornée à 49 positions (±9 studs sur X/Z,
+  pas de 3) et huit lacets fixes, parcourus depuis un indice aléatoire. Neuf sondes par pose vérifient
+  centre, coins et milieux des bords à taille finale ; aucun seuil d'appui n'a été relâché.
+- La base de la boîte englobante suit le plus haut des neuf appuis ; leur dispersion et leur écart
+  au point de référence sous Target restent limités à 0,25 stud. Contrôle des coins dans GiantRoom,
+  volumes interdits et obstacles ; rayons horizontaux croisés sur trois niveaux dans le volume du jouet,
+  sans exclure le maillage du berceau. La boîte des autres obstacles reste également contrôlée. Les pièces
+  sont ancrées. Identité de mission et écouteurs sont prêts avant publication du tag `Toy`.
+  Aucun passage par `PlaceAt` ni `Launch`, aucune modification de `ToyPlacement`, `ToyPhysics` ou `CarryService`.
+- Cycle conservé : retour unique 20 s après `Destroying` (dépôt ou disparition). Une tétine qui reste
+  au sol après capture reste prenable pendant la chasse. Attente des dépendances bornée à 15 s,
+  reprise après 20 s et diagnostics dédupliqués conservés. Après épuisement des poses, nouvel essai
+  après 20 s pour ne pas abandonner la mission sur une occupation temporaire. Le refus donne les neuf
+  sondes du meilleur candidat : instance, normale, Y, écart au repère, ainsi que tout obstacle détecté.
+- Banc `toy-physics-runtime.luau`, branche `mission`, adapté aux poses décalées : neuf mesures,
+  contact au plus haut appui, échelle, unicité et stabilité. Branche `mission_retour` ajoutée : observation
+  d'une destruction par le jeu, absence de retour anticipé et unicité du remplacement, sans modifier d'instance.
+  `lune run check` entièrement vert (sourcemap, selene, stylua, luau-lsp).
+  Lecture de `CarryService` : prise directe désancre et soude le jouet ; ventouse accepte l'ancrage.
+  Confirmation en jeu, capture et journaux sans avertissement restent à faire par Claude : accès MCP
+  à l'inspection Luau et au statut du playtest de nouveau refusé par la politique d'approbation pendant
+  la correction G2-R1. La cause géométrique précise du coin refusé n'est donc pas encore mesurée ;
+  les positions candidates et le contact visuel restent à valider sur le véritable maillage.
+
 ### Corrections après les tests du 15/09 (validation en jeu en attente)
 
 - Les bandeaux de chambre et de cuisine sont masqués quand `MenusOuverts > 0`. Les événements et leurs

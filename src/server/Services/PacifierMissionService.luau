@@ -11,7 +11,7 @@
 
     Deposee (coffre ou tipi) : REWARD_CASH tetines, REWARD_XP XP, stat pacifierStolen (quete « Vole la tetine ») et, la
     premiere fois, la trainee exclusive TrailPacifier. Lachee au sol, elle reste la (reprise seulement pendant un
-    reveil) ; perdue (joueur attrape) ou deposee, elle revient sur le berceau RESPAWN_SECONDS plus tard.
+    reveil) ; detruite ou deposee, elle revient sur le berceau RESPAWN_SECONDS plus tard.
 
     Attribut du joueur TetineFaite (mission deja reussie aujourd'hui : le client cache le panneau « MISSION »).
     Remote PacifierMission : ("refused", texte) | ("win", { cash, xp, cosmetic? }) au joueur ; ("stolen", nom, userId)
@@ -34,7 +34,6 @@ local DataService = require(script.Parent:WaitForChild("DataService"))
 local GiantService = require(script.Parent:WaitForChild("GiantService"))
 local PassService = require(script.Parent:WaitForChild("PassService"))
 local ShopService = require(script.Parent:WaitForChild("ShopService"))
-local ToySpawnService = require(script.Parent:WaitForChild("ToySpawnService"))
 
 local TOY_ID = "Pacifier"
 local MISSION_ATTRIBUTE = "TetineMission"
@@ -46,9 +45,13 @@ local SCALE = 1.7
 local RESPAWN_SECONDS = 20
 local DEPENDENCY_TIMEOUT = 15
 local DEPENDENCY_POLL = 0.5
--- jouet « temporaire » qui ne disparait jamais de lui-meme
-local LIFETIME = 10 ^ 9
-local DROP_HEIGHT = 8
+local RAY_HEIGHT = 30
+local RAY_DEPTH = 100
+local MIN_SUPPORT_NORMAL = 0.98
+local MAX_SUPPORT_STEP = 0.25
+local SEARCH_STEP = 3
+local SEARCH_RINGS = 3 -- 49 positions au plus, à moins de 13 studs de Target.
+local SEARCH_YAWS = 8
 local REFUSE_COOLDOWN = 2.5
 local GOLD = Color3.fromRGB(255, 205, 80)
 local ICON = "rbxassetid://78137565006209" -- Ui/Assets.pouvoirTetine
@@ -66,6 +69,7 @@ local respawnPending = false
 local spawnInProgress = false
 local lastSpawnFailure: string? = nil
 local lastRefusal: { [Player]: number } = {}
+local random = Random.new()
 
 local function remote(): RemoteEvent
     return Remotes.Get("PacifierMission") :: RemoteEvent
@@ -73,9 +77,10 @@ end
 
 -- Attendre le vrai repère du matelas, sans déplacer la mission vers un point de secours.
 local function cribSpot(): Vector3?
+    local room = workspace:FindFirstChild("Chambre")
     for _, pad in CollectionService:GetTagged("Trampoline") do
         local target = pad:GetAttribute("Target")
-        if pad:IsDescendantOf(workspace) and typeof(target) == "Vector3" then
+        if room and pad:IsDescendantOf(room) and typeof(target) == "Vector3" then
             return target
         end
     end
@@ -91,7 +96,11 @@ local function spawnDependencies(): (Vector3?, string?)
     if template == nil then
         return nil, "modèle absent : ServerStorage.ToyModels.Pacifier"
     end
-    if not template.Archivable or Zone.PrimaryPart(template) == nil then
+    if
+        not template.Archivable
+        or not (template:IsA("Model") or template:IsA("BasePart"))
+        or Zone.PrimaryPart(template) == nil
+    then
         return nil, "modèle invalide : Pacifier doit être clonable et avoir une pièce physique"
     end
     local live = workspace:FindFirstChild("ToysLive")
@@ -99,6 +108,10 @@ local function spawnDependencies(): (Vector3?, string?)
         return nil, "dépendance : Workspace.ToysLive indisponible"
     end
     local room = workspace:FindFirstChild("Chambre")
+    local decor = if room then room:FindFirstChild("Decor") else nil
+    if decor == nil or decor:FindFirstChild("Crib") == nil then
+        return nil, "dépendance : Workspace.Chambre.Decor.Crib indisponible"
+    end
     local structure = if room then room:FindFirstChild("Structure") else nil
     local floor = if structure then structure:FindFirstChild("Sol") else nil
     if floor == nil or not floor:IsA("BasePart") then
@@ -114,6 +127,248 @@ local function spawnDependencies(): (Vector3?, string?)
         end
     end
     return nil, "dépendance : zone GiantRoom du berceau indisponible"
+end
+
+-- Exception privée à cette apparition : aucune permission de meuble n'est transmise aux lâchers suivants.
+-- Le rayon interroge aussi les obstacles ; un autre meuble ou le parquet ne remplacent jamais le berceau.
+local function createOnMattress(spot: Vector3): (Instance?, string?)
+    local room = workspace:FindFirstChild("Chambre")
+    local decor = if room then room:FindFirstChild("Decor") else nil
+    local crib = if decor then decor:FindFirstChild("Crib") else nil
+    local live = workspace:FindFirstChild("ToysLive")
+    local models = ServerStorage:FindFirstChild("ToyModels")
+    local template = if models then models:FindFirstChild(TOY_ID) else nil
+    if crib == nil or live == nil or template == nil then
+        return nil, "dépendance : berceau, ToysLive ou modèle indisponible"
+    end
+    local params = RaycastParams.new()
+    params.RespectCanCollide = true
+    local function supportAt(offset: Vector3): RaycastResult?
+        return workspace:Raycast(spot + offset + Vector3.new(0, RAY_HEIGHT, 0), Vector3.new(0, -RAY_DEPTH, 0), params)
+    end
+    local function describe(hit: RaycastResult?, referenceY: number?): string
+        if hit == nil then
+            return "instance=aucune ; normale=absente ; écartY=non mesurable"
+        end
+        return string.format(
+            "instance=%s ; normale=(%.3f, %.3f, %.3f) ; Y=%.3f ; écartY=%s",
+            hit.Instance:GetFullName(),
+            hit.Normal.X,
+            hit.Normal.Y,
+            hit.Normal.Z,
+            hit.Position.Y,
+            if referenceY then string.format("%.3f", hit.Position.Y - referenceY) else "non mesurable"
+        )
+    end
+    local support = supportAt(Vector3.zero)
+    if support == nil or not support.Instance:IsDescendantOf(crib) or support.Normal.Y < MIN_SUPPORT_NORMAL then
+        return nil, "placement refusé : appui de référence sous Target ; " .. describe(support, nil)
+    end
+    local referenceY = support.Position.Y
+    local toy = template:Clone()
+    local box: CFrame
+    local size: Vector3
+    if toy:IsA("Model") then
+        toy:ScaleTo(toy:GetScale() * SCALE)
+        box, size = toy:GetBoundingBox()
+    elseif toy:IsA("BasePart") then
+        toy.Size *= SCALE
+        box, size = toy.CFrame, toy.Size
+    else
+        toy:Destroy()
+        return nil, "modèle invalide : Pacifier doit être un Model ou une BasePart"
+    end
+    local roomZones: { BasePart } = {}
+    for _, zone in CollectionService:GetTagged("GiantRoom") do
+        if zone:IsA("BasePart") and room and zone:IsDescendantOf(room) then
+            table.insert(roomZones, zone)
+        end
+    end
+    local function inRoom(position: Vector3): boolean
+        for _, zone in roomZones do
+            if Zone.Contains(zone, position) then
+                return true
+            end
+        end
+        return false
+    end
+    local forbidden: { BasePart } = {}
+    for _, tag in { "Base", "HideZone", "BaseDoor", "InteriorZone", "KitchenDoor" } do
+        for _, zone in CollectionService:GetTagged(tag) do
+            if zone:IsA("BasePart") and zone:IsDescendantOf(workspace) then
+                table.insert(forbidden, zone)
+            end
+        end
+    end
+    local overlap = OverlapParams.new()
+    overlap.RespectCanCollide = true
+    -- Le berceau monobloc a une boîte immense : sa géométrie est testée par les rayons ci-dessous.
+    -- Les autres objets restent refusés par leur volume, y compris les joueurs et les jouets.
+    overlap.FilterDescendantsInstances = { crib }
+    local function validate(offset: Vector3, facing: CFrame): (CFrame?, number, string)
+        local notes: { string } = {}
+        local failures = 0
+        local low, high = math.huge, -math.huge
+        -- Ne pas s'arrêter au premier coin : conserver aussi les mesures des huit autres sondes.
+        for _, x in { -1, 0, 1 } do
+            for _, z in { -1, 0, 1 } do
+                local probe = offset + facing:VectorToWorldSpace(Vector3.new(x * size.X / 2, 0, z * size.Z / 2))
+                local hit = supportAt(probe)
+                local valid = hit ~= nil
+                    and hit.Instance:IsDescendantOf(crib)
+                    and hit.Normal.Y >= MIN_SUPPORT_NORMAL
+                    and math.abs(hit.Position.Y - referenceY) <= MAX_SUPPORT_STEP
+                table.insert(
+                    notes,
+                    string.format(
+                        "sonde(%d,%d) %s ; %s",
+                        x,
+                        z,
+                        if valid then "appui" else "refus",
+                        describe(hit, referenceY)
+                    )
+                )
+                if valid and hit then
+                    low = math.min(low, hit.Position.Y)
+                    high = math.max(high, hit.Position.Y)
+                else
+                    failures += 1
+                end
+            end
+        end
+        local measurements = table.concat(notes, " | ")
+        if failures > 0 then
+            return nil, failures, measurements
+        end
+        if high - low > MAX_SUPPORT_STEP then
+            return nil, 1, string.format("dispersionY=%.3f ; %s", high - low, measurements)
+        end
+        -- Le point le plus haut évite d'enfoncer un coin ; le jeu maximal reste borné à 0,25 stud.
+        local center = CFrame.new(spot.X + offset.X, high + size.Y / 2, spot.Z + offset.Z) * facing
+        for _, x in { -1, 1 } do
+            for _, y in { -1, 1 } do
+                for _, z in { -1, 1 } do
+                    if not inRoom(center:PointToWorldSpace(Vector3.new(x * size.X, y * size.Y, z * size.Z) / 2)) then
+                        return nil, 1, "empreinte hors de GiantRoom ; " .. measurements
+                    end
+                end
+            end
+        end
+        local radius = Vector2.new(size.X, size.Z).Magnitude / 2
+        for _, zone in forbidden do
+            local p = zone.CFrame:PointToObjectSpace(center.Position)
+            local half = zone.Size / 2 + Vector3.new(radius + 3, size.Y / 2 + 3, radius + 3)
+            if math.abs(p.X) <= half.X and math.abs(p.Y) <= half.Y and math.abs(p.Z) <= half.Z then
+                return nil, 1, "volume interdit=" .. zone:GetFullName() .. " ; " .. measurements
+            end
+        end
+        local obstacles = workspace:GetPartBoundsInBox(center + Vector3.new(0, 0.05, 0), size, overlap)
+        if #obstacles > 0 then
+            return nil, 1, "obstacle=" .. obstacles[1]:GetFullName() .. " ; " .. measurements
+        end
+        -- Traverser le volume dans les deux sens : barreaux et reliefs du maillage ne sont pas ignorés.
+        for _, height in { 0.05, size.Y / 2, size.Y } do
+            for _, fraction in { -1, -0.5, 0, 0.5, 1 } do
+                for _, alongX in { true, false } do
+                    local a = if alongX
+                        then Vector3.new(-size.X / 2, height - size.Y / 2, fraction * size.Z / 2)
+                        else Vector3.new(fraction * size.X / 2, height - size.Y / 2, -size.Z / 2)
+                    local delta = if alongX then Vector3.new(size.X, 0, 0) else Vector3.new(0, 0, size.Z)
+                    local origin = center:PointToWorldSpace(a)
+                    local direction = center:VectorToWorldSpace(delta)
+                    local hit = workspace:Raycast(origin, direction, params)
+                        or workspace:Raycast(origin + direction, -direction, params)
+                    if hit then
+                        return nil, 1, "dégagement refusé ; " .. describe(hit, high) .. " ; " .. measurements
+                    end
+                end
+            end
+        end
+        return center, 0, measurements
+    end
+    -- Même ensemble de poses à chaque apparition ; seul l'ordre des lacets varie.
+    -- Un tirage malchanceux ne peut plus éliminer une orientation admissible.
+    local firstYaw = random:NextInteger(0, SEARCH_YAWS - 1)
+    local center: CFrame? = nil
+    local bestFailures = math.huge
+    local bestRank = math.huge
+    local bestDiagnostic = ""
+    local attempts = 0
+    for ring = 0, SEARCH_RINGS do
+        for x = -ring, ring do
+            for z = -ring, ring do
+                if math.max(math.abs(x), math.abs(z)) ~= ring then
+                    continue
+                end
+                local offset = Vector3.new(x * SEARCH_STEP, 0, z * SEARCH_STEP)
+                for yaw = 0, SEARCH_YAWS - 1 do
+                    local yawIndex = (firstYaw + yaw) % SEARCH_YAWS
+                    local angle = yawIndex * math.pi * 2 / SEARCH_YAWS
+                    local candidate, failures, diagnostic = validate(offset, CFrame.Angles(0, angle, 0))
+                    attempts += 1
+                    if candidate then
+                        center = candidate
+                        break
+                    end
+                    -- Diagnostic stable en cas d'échec identique, malgré l'ordre aléatoire des lacets.
+                    local rank = (x * x + z * z) * 1000
+                        + ((x + SEARCH_RINGS) * 7 + z + SEARCH_RINGS) * SEARCH_YAWS
+                        + yawIndex
+                    if failures < bestFailures or (failures == bestFailures and rank < bestRank) then
+                        bestFailures = failures
+                        bestRank = rank
+                        bestDiagnostic = string.format(
+                            "offset=(%.1f, %.1f), lacet=%.1f° ; %s",
+                            offset.X,
+                            offset.Z,
+                            math.deg(angle),
+                            diagnostic
+                        )
+                    end
+                end
+                if center then
+                    break
+                end
+            end
+            if center then
+                break
+            end
+        end
+        if center then
+            break
+        end
+    end
+    if center == nil then
+        toy:Destroy()
+        return nil,
+            string.format("placement refusé après %d poses ; meilleur candidat : %s", attempts, bestDiagnostic)
+    end
+    if toy:IsA("Model") then
+        toy:PivotTo(center * box:ToObjectSpace(toy:GetPivot()))
+    elseif toy:IsA("BasePart") then
+        toy.CFrame = center
+    end
+    local function anchor(part: BasePart): ()
+        part.Anchored = true
+        part.CanCollide = true
+        part.CanQuery = true
+        part.AssemblyLinearVelocity = Vector3.zero
+        part.AssemblyAngularVelocity = Vector3.zero
+    end
+    if toy:IsA("BasePart") then
+        anchor(toy)
+    end
+    for _, descendant in toy:GetDescendants() do
+        if descendant:IsA("BasePart") then
+            anchor(descendant)
+        end
+    end
+    toy.Name = TOY_ID
+    toy:SetAttribute("ToyId", TOY_ID)
+    toy:SetAttribute("Temporaire", true)
+    toy:SetAttribute(MISSION_ATTRIBUTE, true)
+    toy.Parent = live
+    return toy, nil
 end
 
 local function reportSpawnFailure(reason: string): ()
@@ -165,10 +420,6 @@ end
 
 -- Tetine grossie, lueur doree, etincelles et panneau « MISSION » visible de loin.
 local function decorate(toy: Instance): ()
-    toy:SetAttribute(MISSION_ATTRIBUTE, true)
-    if toy:IsA("Model") then
-        toy:ScaleTo(toy:GetScale() * SCALE)
-    end
     local highlight = Instance.new("Highlight")
     highlight.Name = "LueurTetine"
     highlight.FillColor = GOLD
@@ -271,12 +522,12 @@ spawnMission = function(): ()
         scheduleRespawn()
         return
     end
-    local toy, failure =
-        ToySpawnService:SpawnTemporary(TOY_ID, spot + Vector3.new(0, DROP_HEIGHT, 0), nil, LIFETIME, nil)
+    local toy, failure = createOnMattress(spot)
     spawnInProgress = false
     if toy == nil then
-        -- Le placement reste protégé par PlaceAt. Un refus nécessite une tâche séparée, sans essais en boucle.
-        reportSpawnFailure(failure or "échec d'apparition sans diagnostic")
+        -- Une occupation temporaire du matelas ne doit pas supprimer la mission pour toute la session.
+        reportSpawnFailure((failure or "échec d'apparition sans diagnostic") .. " ; nouvel essai dans 20 s")
+        scheduleRespawn()
         return
     end
     lastSpawnFailure = nil
@@ -300,6 +551,8 @@ spawnMission = function(): ()
             scheduleRespawn()
         end
     end)
+    -- La prise n'est publiée qu'après la pose, l'identité de mission et les écouteurs de son cycle.
+    CollectionService:AddTag(toy, "Toy")
 end
 
 -- Depot (coffre ou tipi) d'une « Tetine » par le dernier porteur de la mission, qui la porte encore ou vient de la
