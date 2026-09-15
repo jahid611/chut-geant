@@ -7,9 +7,9 @@
     touches pastel (rose, bleu ciel, menthe, jaune), police arrondie.
 ]]
 
-local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Assets = require(script.Parent:WaitForChild("Assets"))
@@ -524,58 +524,92 @@ function Theme.pill(
     return frame, label
 end
 
--- Petit message en haut de l'ecran qui disparait tout seul.
-local function buildToast(gui: Instance, message: string, color: Color3): ()
+-- Icone d'un message court d'apres ses mots, dans l'ordre (retour utilisateur du 15/09 : « des icones, c'est toujours
+-- mieux que des mots »). « Nouveau dans ta collection : ... (+150 tétines) » prend la collection, pas la tetine.
+local TOAST_ICONS: { { string } } = {
+    { "record", "iconeDecorTrophee" },
+    { "collection", "menuCollection" },
+    { "défi", "menuQuetes" },
+    { "danse", "cosmetiqueDanse" },
+    { "cadeau", "menuCadeaux" },
+    { "tipi", "iconeDecorTipi" },
+    { "coffre", "articleCoffre" },
+    { "veilleuse", "iconeDecorLampe" },
+    { "éclair", "iconeDecorLampe" },
+    { "lune", "lune" },
+    { "nuit", "menuNuits" },
+    { "vol", "pouvoirCape" },
+    { "tétine", "tetine" },
+    { "bébé", "bebeDort" },
+    { "xp", "etoile" },
+    { "niveau", "etoile" },
+    { "tutoriel", "etoile" },
+}
+
+local function toastIcon(message: string): string?
+    local lower = string.lower(message)
+    for _, pair in TOAST_ICONS do
+        if string.find(lower, pair[1], 1, true) then
+            return pair[2]
+        end
+    end
+    return nil
+end
+
+-- Petit message en bas a gauche, taille moyenne, avec une icone ; il disparait tout seul. Il etait gros et au milieu de
+-- l'ecran, par-dessus le jeu (capture utilisateur du 15/09). Sur ecran tactile, il passe au-dessus du joystick.
+local TOAST_WIDTH = 400
+local TOAST_HEIGHT = 56
+local TOAST_MARGIN = 16
+local TOAST_TOUCH_LIFT = 0.38
+
+local function buildToast(gui: Instance, message: string, color: Color3, icon: string?): ()
     local holder = Instance.new("Frame")
     holder.Name = "Toast"
     holder.BackgroundTransparency = 1
-    holder.Size = UDim2.fromOffset(560, 64)
-    holder.AnchorPoint = Vector2.new(0.5, 0)
+    holder.Size = UDim2.fromOffset(TOAST_WIDTH, TOAST_HEIGHT)
+    holder.AnchorPoint = Vector2.new(0, 1)
     holder.Parent = gui
     local scale = Theme.fit(holder)
-    -- Sous le bandeau d'evenement s'il est affiche (un refus recouvrait « MAMAN ARRIVE ! »), et les messages
-    -- rapproches s'empilent au lieu de se superposer.
-    local top = 160
-    local screen = if gui:IsA("ScreenGui") then gui else gui:FindFirstAncestorWhichIsA("ScreenGui")
+    -- les messages rapproches (et ceux des autres ecrans : chien, cuisine...) s'empilent vers le haut
     local playerGui = Players.LocalPlayer and Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
-    -- bandeau du bebe (EventController) ou de la cuisine (KitchenEventController) : le frigo recouvrait son compte a
-    -- rebours avec « Le frigo t'a éclairé » et « Il chasse ! »
-    for _, bannerName in { "BandeauEvenement", "BandeauCuisine" } do
-        local banner = if playerGui then playerGui:FindFirstChild(bannerName, true) else nil
-        if screen and banner and banner:IsA("GuiObject") and banner.Visible then
-            -- AbsolutePosition part du dessous de la barre Roblox ; l'offset d'un ScreenGui IgnoreGuiInset part du haut
-            local inset = if screen.IgnoreGuiInset then GuiService:GetGuiInset().Y else 0
-            top = math.max(top, banner.AbsolutePosition.Y + banner.AbsoluteSize.Y + inset + 8)
-        end
-    end
-    -- empile aussi les messages des autres ecrans (chien, evenements de cuisine...) : ils se chevauchaient
-    local step = 72 * scale.Scale
+    local stacked = 0
     local toastRoot: Instance = playerGui or gui
     for _, other in toastRoot:GetDescendants() do
         if other ~= holder and other.Name == "Toast" and other:IsA("GuiObject") then
-            top += step
+            stacked += 1
         end
     end
-    holder.Position = UDim2.new(0.5, 0, 0, top)
+    local lift = if UserInputService.TouchEnabled then TOAST_TOUCH_LIFT else 0
+    local bottom = TOAST_MARGIN + stacked * (TOAST_HEIGHT + 8) * scale.Scale
+    holder.Position = UDim2.new(0, TOAST_MARGIN, 1 - lift, -bottom)
     local pill = Theme.panel(holder, "Pilule", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), Vector2.zero)
     local stroke = pill:FindFirstChildOfClass("UIStroke")
     if stroke then
         stroke.Color = color
     end
+    local key = icon or toastIcon(message)
+    local textLeft = 18
+    if key then
+        Theme.icon(pill, "Icone", key, UDim2.fromOffset(44, 44), UDim2.new(0, 8, 0.5, 0), Vector2.new(0, 0.5))
+        textLeft = 60
+    end
     local label = Theme.text(
         pill,
         "Texte",
         message,
-        UDim2.new(1, -30, 1, -18),
-        UDim2.fromScale(0.5, 0.5),
+        UDim2.new(1, -(textLeft + 14), 1, -12),
+        UDim2.new(0, textLeft, 0.5, 0),
         Theme.WHITE,
-        Vector2.new(0.5, 0.5)
+        Vector2.new(0, 0.5)
     )
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextWrapped = true
     -- meme taille de texte d'un message a l'autre (un message court etait ecrit beaucoup plus gros)
     local sizeLimit = Instance.new("UITextSizeConstraint")
-    sizeLimit.MaxTextSize = 24
+    sizeLimit.MaxTextSize = 19
     sizeLimit.Parent = label
-    task.delay(2.4, function()
+    task.delay(3, function()
         if holder.Parent then
             holder:Destroy()
         end
@@ -587,13 +621,14 @@ end
 local CELEBRATION_NAME = "MonteeNiveau"
 local CELEBRATION_MAX_WAIT = 6
 
-function Theme.toast(gui: Instance, message: string, color: Color3): ()
+-- icon : cle d'Ui/Assets ; sans elle, l'icone est choisie d'apres les mots du message.
+function Theme.toast(gui: Instance, message: string, color: Color3, icon: string?): ()
     local playerGui = Players.LocalPlayer and Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
     local function celebrating(): boolean
         return playerGui ~= nil and playerGui:FindFirstChild(CELEBRATION_NAME, true) ~= nil
     end
     if not celebrating() then
-        buildToast(gui, message, color)
+        buildToast(gui, message, color, icon)
         return
     end
     task.spawn(function()
@@ -602,7 +637,7 @@ function Theme.toast(gui: Instance, message: string, color: Color3): ()
             task.wait(0.2)
         end
         if gui.Parent then
-            buildToast(gui, message, color)
+            buildToast(gui, message, color, icon)
         end
     end)
 end

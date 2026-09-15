@@ -1296,9 +1296,10 @@ local function onCaught(reason: string, launch: Vector3): ()
         if from then
             throwSlipper(from, root)
         end
+        -- jumpscare avec la tete de maman des la capture (« il doit arriver instantanement », utilisateur du 15/09) ; le
+        -- « BONK ! » et le vol plane restent au moment ou le chausson touche
+        Screamer.play("mom")
         task.delay(delay, function()
-            -- jumpscare avec la tete de maman (demande utilisateur du 15/09), au moment ou le chausson touche
-            Screamer.play("mom")
             shout(character, "BONK !", Theme.YELLOW, 1.2)
             shakeCamera(3)
             -- vol plane en tournant sur soi-meme

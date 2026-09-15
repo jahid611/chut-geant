@@ -13,6 +13,7 @@
     cuisine (Piece == "Cuisine" : les etapes parlent du bebe, c'est le chien qui y dort).
 ]]
 
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -338,6 +339,11 @@ function TutorialController:Start(): ()
             return
         end
         local position, size = target.AbsolutePosition, target.AbsoluteSize
+        -- AbsolutePosition part du dessous de la barre Roblox, l'ecran du tutoriel (IgnoreGuiInset) part du haut : sans
+        -- ce decalage, cadre et fleche tombaient une barre trop haut (captures utilisateur du 15/09).
+        if gui.IgnoreGuiInset then
+            position += Vector2.new(0, GuiService:GetGuiInset().Y)
+        end
         local pad = 8
         ring.Visible = true
         ring.Position = UDim2.fromOffset(position.X - pad, position.Y - pad)
