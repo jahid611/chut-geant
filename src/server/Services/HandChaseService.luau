@@ -39,7 +39,7 @@ local GROUND_SECONDS = 0.25
 local HOME_OFFSET = Vector3.new(0, 0, 70)
 local HOME_SPEED_FACTOR = 0.5
 -- Apres une capture, le joueur vole puis se releve : il n'est ni cible ni attrape pendant ce temps.
-local IGNORE_AFTER_CATCH = Tuning.CATCH_STUN_SECONDS + Tuning.CATCH_RECOVER_SECONDS + 0.5
+local IGNORE_AFTER_CATCH = Tuning.HAND_GRAB_SECONDS + Tuning.CATCH_STUN_SECONDS + Tuning.CATCH_RECOVER_SECONDS + 0.5
 
 local HandChaseService = {}
 
@@ -53,6 +53,7 @@ local endsAt = 0
 local sinceRetarget = math.huge
 local sincePublish = math.huge
 local sinceGround = 0
+local grabUntil = 0
 -- Eligibles a la prime : poursuivis au moins une fois pendant cette chasse et jamais disqualifies depuis.
 local chased: { [Player]: boolean } = {}
 -- Disqualifies pour toute la chasse : sortis de la chambre (cuisine, base), morts ou attrapes.
@@ -166,6 +167,7 @@ local function start(untilTime: number): ()
     position = Vector3.new(home.X, groundY, home.Z)
     target = nil
     startedAt = workspace:GetServerTimeNow()
+    grabUntil = 0
     endsAt = untilTime
     sinceRetarget, sincePublish, sinceGround = math.huge, math.huge, 0
     table.clear(chased)
@@ -184,6 +186,7 @@ local function stop(natural: boolean): ()
         return
     end
     active = false
+    grabUntil = 0
     target = nil
     publish()
     if natural then
@@ -211,6 +214,18 @@ local function step(dt: number): ()
     sinceGround += dt
     local distracted = Abilities.IsDecoyActive()
 
+    -- Meme pendant la prise, une sortie ou une mort retire la prime de survie.
+    for player in chased do
+        local root = rootOf(player)
+        if player.Parent == nil or root == nil or not NoiseService:IsInRoom(root.Position) then
+            disqualify(player)
+        end
+    end
+    -- Garder position et cible publiees jusqu'au lacher ; aucune autre capture dans cet intervalle.
+    if now < grabUntil then
+        return
+    end
+
     if sinceRetarget >= Tuning.HAND_RETARGET_SECONDS then
         sinceRetarget = 0
         target = if distracted then nil else pickTarget(now)
@@ -219,14 +234,6 @@ local function step(dt: number): ()
             chased[current] = true
         end
     end
-    -- Quitter la chambre (cuisine, sa base), mourir : plus de prime pour cette chasse, meme en revenant avant la fin.
-    for player in chased do
-        local root = rootOf(player)
-        if player.Parent == nil or root == nil or not NoiseService:IsInRoom(root.Position) then
-            disqualify(player)
-        end
-    end
-
     local span = math.max(endsAt - startedAt, 1)
     local progress = math.clamp((now - startedAt) / span, 0, 1)
     local speed = Tuning.HAND_SPEED_START + (Tuning.HAND_SPEED_END - Tuning.HAND_SPEED_START) * progress
@@ -269,7 +276,15 @@ local function step(dt: number): ()
                     -- Catch peut annuler la propulsion (Doudou bouclier) : le joueur est ignore quand meme un instant,
                     -- et la main change de cible.
                     caughtAt[player] = now
-                    GiantService:Catch(player, "hand")
+                    if GiantService:Catch(player, "hand") then
+                        grabUntil = now + Tuning.HAND_GRAB_SECONDS
+                        position = Vector3.new(root.Position.X, groundY, root.Position.Z)
+                        target = player
+                        sinceRetarget = math.huge
+                        sincePublish = 0
+                        publish()
+                        break
+                    end
                     if target == player then
                         target = nil
                         sinceRetarget = math.huge

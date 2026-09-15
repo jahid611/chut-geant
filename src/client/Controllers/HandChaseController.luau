@@ -18,6 +18,7 @@ local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
+local Tuning = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Tuning"))
 
 local Sfx = require(script.Parent.Parent.Ui.Sfx)
 local Smoke = require(script.Parent.Parent.Ui.Smoke)
@@ -49,6 +50,33 @@ local HAND_HIGH = 30
 local HAND_LOW = 8
 -- Le modele TRELLIS a les doigts vers le haut et la paume vers la camera : on le couche paume vers le sol.
 local HAND_ROTATION = CFrame.Angles(math.rad(-90), 0, 0)
+local FIST_MODEL_NAME = "PoingGeanteModele"
+local GRAB_LIFT = 10
+local GRAB_PALM_HEIGHT = 1.5
+local RETURN_SECONDS = 0.3
+
+type Grab = {
+    character: Model,
+    humanoid: Humanoid,
+    root: BasePart,
+    started: number,
+    from: CFrame,
+    center: Vector3,
+    rootRotation: CFrame,
+    handScale: number,
+    palmOffset: Vector3,
+    fist: Model?,
+    fistParts: { BasePart },
+    fistScale: number,
+    fistOffset: Vector3,
+    closed: boolean,
+    screamed: boolean,
+    previousStun: number?,
+    stunUntil: number,
+    onClose: () -> (),
+    onScream: () -> (),
+    onRelease: () -> (),
+}
 
 local HandChaseController = {}
 
@@ -62,16 +90,19 @@ local hand: Model? = nil
 local handParts: { BasePart } = {}
 local shown = Vector3.zero
 local fade = 0
+local grab: Grab? = nil
+local returnFrom: CFrame? = nil
+local returnStarted = 0
 
-local function buildHand(): ()
-    local template = ReplicatedStorage:FindFirstChild(HAND_MODEL_NAME)
+local function cloneHand(name: string, visibleName: string): (Model?, { BasePart })
+    local template = ReplicatedStorage:FindFirstChild(name)
     if template == nil or not template:IsA("Model") then
-        return
+        return nil, {}
     end
     local copy = template:Clone()
-    handParts = {}
+    local parts: { BasePart } = {}
     for _, descendant in copy:GetDescendants() do
-        if descendant:IsA("LuaSourceContainer") then
+        if descendant:IsA("LuaSourceContainer") or descendant:IsA("Sound") then
             descendant:Destroy()
         elseif descendant:IsA("BasePart") then
             descendant.Anchored = true
@@ -79,12 +110,132 @@ local function buildHand(): ()
             descendant.CanQuery = false
             descendant.CanTouch = false
             descendant.LocalTransparencyModifier = 1
-            table.insert(handParts, descendant)
+            table.insert(parts, descendant)
         end
     end
-    copy.Name = "MainGeanteVisible"
+    if #parts == 0 then
+        copy:Destroy()
+        return nil, {}
+    end
+    copy.Name = visibleName
     copy.Parent = Workspace
-    hand = copy
+    return copy, parts
+end
+
+local function buildHand(): ()
+    if hand == nil then
+        hand, handParts = cloneHand(HAND_MODEL_NAME, "MainGeanteVisible")
+    end
+end
+
+local function showParts(parts: { BasePart }, opacity: number): ()
+    for _, part in parts do
+        part.LocalTransparencyModifier = 1 - opacity
+    end
+end
+
+-- Repere dans le modele avant ScaleTo : la paume ouverte est sous le milieu des doigts (axe Y du modele).
+-- Le poing est centre sur sa boite ; les deux reperes restent au meme endroit pendant le fondu.
+local function gripOffset(model: Model?, open: boolean): Vector3
+    if model == nil then
+        return Vector3.zero
+    end
+    local box, size = model:GetBoundingBox()
+    return model:GetPivot():PointToObjectSpace(box.Position) + Vector3.new(0, if open then -size.Y * 0.15 else 0, 0)
+end
+
+local function finishGrab(current: Grab, cancelled: boolean): ()
+    grab = nil
+    if current.fist then
+        current.fist:Destroy()
+    end
+    local model = hand
+    if model and model.Parent then
+        model:ScaleTo(current.handScale)
+        showParts(handParts, 1)
+        returnFrom = model:GetPivot()
+        returnStarted = os.clock()
+    end
+    if cancelled then
+        -- Ne toucher qu'a l'ancien personnage, jamais a celui qui vient de reapparaitre.
+        if current.character:GetAttribute("EtourdiJusqua") == current.stunUntil then
+            current.character:SetAttribute("EtourdiJusqua", current.previousStun)
+        end
+        if current.closed and current.humanoid.Parent then
+            current.humanoid.PlatformStand = false
+            if current.humanoid.Health > 0 then
+                current.humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+        end
+    else
+        current.onRelease()
+    end
+end
+
+local function stepGrab(): ()
+    local current = grab
+    if current == nil then
+        return
+    end
+    if
+        player.Character ~= current.character
+        or not current.character:IsDescendantOf(Workspace)
+        or not current.root:IsDescendantOf(current.character)
+        or not current.humanoid:IsDescendantOf(current.character)
+        or current.humanoid.Health <= 0
+    then
+        finishGrab(current, true)
+        return
+    end
+    local elapsed = os.clock() - current.started
+    local duration = Tuning.HAND_GRAB_SECONDS
+    local dive = duration / 3
+    local close = duration / 9
+    local center = current.center
+    local model = hand
+    if elapsed < dive then
+        center = current.root.Position + Vector3.new(0, GRAB_PALM_HEIGHT, 0)
+        current.center = center
+        if model then
+            local goal = CFrame.new(center) * HAND_ROTATION * CFrame.new(-current.palmOffset)
+            model:PivotTo(current.from:Lerp(goal, (elapsed / dive) ^ 2))
+            showParts(handParts, 1)
+        end
+    else
+        if not current.closed then
+            current.closed = true
+            current.center = current.root.Position + Vector3.new(0, GRAB_PALM_HEIGHT, 0)
+            current.onClose()
+        end
+        local lift = math.clamp((elapsed - dive) / (duration - dive), 0, 1)
+        center = current.center + Vector3.new(0, GRAB_LIFT * lift * lift * (3 - 2 * lift), 0)
+        local blend = math.clamp((elapsed - dive) / close, 0, 1)
+        local squeeze = math.sin(blend * math.pi)
+        local fist = current.fist
+        if model then
+            local scale = if fist then 1 else 1 - 0.22 * squeeze - 0.1 * blend
+            model:ScaleTo(current.handScale * scale)
+            model:PivotTo(CFrame.new(center) * HAND_ROTATION * CFrame.new(-current.palmOffset * scale))
+            showParts(handParts, if fist then 1 - blend else 1)
+        end
+        if fist then
+            local scale = 1 - 0.1 * squeeze
+            fist:ScaleTo(current.fistScale * scale)
+            fist:PivotTo(CFrame.new(center) * HAND_ROTATION * CFrame.new(-current.fistOffset * scale))
+            showParts(current.fistParts, blend)
+        end
+        current.humanoid.PlatformStand = true
+        current.root.AssemblyLinearVelocity = Vector3.zero
+        current.root.AssemblyAngularVelocity = Vector3.zero
+        current.root.CFrame = CFrame.new(center - Vector3.new(0, GRAB_PALM_HEIGHT, 0)) * current.rootRotation
+    end
+    if elapsed >= duration * (0.55 / 0.9) and not current.screamed then
+        current.screamed = true
+        current.onScream()
+    end
+    if elapsed >= duration then
+        finishGrab(current, false)
+    end
 end
 
 local function buildShadow(at: Vector3): ()
@@ -113,10 +264,11 @@ local function buildShadow(at: Vector3): ()
 end
 
 local function step(dt: number): ()
+    stepGrab()
     local giant = Workspace:FindFirstChild("Geant")
     local isActive = giant ~= nil and giant:GetAttribute("MainActive") == true
     local goal = if giant then giant:GetAttribute("MainPosition") else nil
-    fade = math.clamp(fade + (if isActive then dt / FADE_IN else -dt / FADE_OUT), 0, 1)
+    fade = math.clamp(fade + (if isActive or grab ~= nil then dt / FADE_IN else -dt / FADE_OUT), 0, 1)
     if isActive and typeof(goal) == "Vector3" then
         if shadow == nil then
             buildShadow(goal)
@@ -144,11 +296,20 @@ local function step(dt: number): ()
     image.Transparency = 1 - fade * (SHADOW_MIN_OPACITY + (1 - SHADOW_MIN_OPACITY) * near)
 
     local model = hand
-    if model then
+    if model and grab == nil then
         local t = os.clock()
         local height = HAND_HIGH + (HAND_LOW - HAND_HIGH) * near + math.sin(t * 2.5) * 1.5
         local sway = CFrame.Angles(0, math.sin(t * 1.3) * 0.15, math.sin(t * 2.1) * 0.05)
-        model:PivotTo(CFrame.new(shown + Vector3.new(0, height, 0)) * sway * HAND_ROTATION)
+        local pose = CFrame.new(shown + Vector3.new(0, height, 0)) * sway * HAND_ROTATION
+        local returning = returnFrom
+        if returning then
+            local alpha = math.clamp((os.clock() - returnStarted) / RETURN_SECONDS, 0, 1)
+            pose = returning:Lerp(pose, alpha * alpha * (3 - 2 * alpha))
+            if alpha >= 1 then
+                returnFrom = nil
+            end
+        end
+        model:PivotTo(pose)
         for _, handPart in handParts do
             handPart.LocalTransparencyModifier = 1 - fade
         end
@@ -172,7 +333,7 @@ local function step(dt: number): ()
         edge.Transparency = 1
     end
 
-    if fade <= 0 and not isActive then
+    if fade <= 0 and not isActive and grab == nil then
         part:Destroy()
         shadow, decal = nil, nil
         if hand then
@@ -180,7 +341,70 @@ local function step(dt: number): ()
             hand = nil
             handParts = {}
         end
+        returnFrom = nil
     end
+end
+
+function HandChaseController:IsGrabbing(): boolean
+    return grab ~= nil
+end
+
+-- EventController fournit les effets : aucune dependance inverse vers ce controleur.
+function HandChaseController:Grab(
+    character: Model,
+    humanoid: Humanoid,
+    root: BasePart,
+    onClose: () -> (),
+    onScream: () -> (),
+    onRelease: () -> ()
+): ()
+    if grab ~= nil or humanoid.Health <= 0 or player.Character ~= character then
+        return
+    end
+    local hadHand = hand ~= nil and fade > 0
+    if shadow == nil then
+        buildShadow(root.Position - Vector3.new(0, 3, 0))
+    end
+    buildHand()
+    local model = hand
+    local from = CFrame.new(root.Position + Vector3.new(0, HAND_HIGH, 0)) * HAND_ROTATION
+    if model then
+        if hadHand then
+            from = model:GetPivot()
+        end
+        model:PivotTo(from)
+        showParts(handParts, 1)
+    end
+    local fist, fistParts = cloneHand(FIST_MODEL_NAME, "PoingGeanteVisible")
+    local now = os.clock()
+    local previous = character:GetAttribute("EtourdiJusqua")
+    local previousStun = if typeof(previous) == "number" then previous else nil
+    local stunUntil = math.max(previousStun or 0, now + Tuning.HAND_GRAB_SECONDS + Tuning.CATCH_STUN_SECONDS)
+    character:SetAttribute("EtourdiJusqua", stunUntil)
+    returnFrom = nil
+    fade = 1
+    grab = {
+        character = character,
+        humanoid = humanoid,
+        root = root,
+        started = now,
+        from = from,
+        center = root.Position + Vector3.new(0, GRAB_PALM_HEIGHT, 0),
+        rootRotation = root.CFrame.Rotation,
+        handScale = if model then model:GetScale() else 1,
+        palmOffset = gripOffset(model, true),
+        fist = fist,
+        fistParts = fistParts,
+        fistScale = if fist then fist:GetScale() else 1,
+        fistOffset = gripOffset(fist, false),
+        closed = false,
+        screamed = false,
+        previousStun = previousStun,
+        stunUntil = stunUntil,
+        onClose = onClose,
+        onScream = onScream,
+        onRelease = onRelease,
+    }
 end
 
 function HandChaseController:Init(): () end

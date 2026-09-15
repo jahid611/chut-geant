@@ -76,6 +76,9 @@ local Tuning = {
     HAND_CATCH_RADIUS = 7,
     HAND_REACH_HEIGHT = 12,
     HAND_RETARGET_SECONDS = 0.3,
+    -- Prise de la main : plongee 0,3 s, fermeture 0,1 s, cri a 0,55 s, puis lacher a 0,9 s.
+    -- Les phases clientes suivent cette duree ; le serveur reste immobile pendant toute la prise.
+    HAND_GRAB_SECONDS = 0.9,
     -- Prime a la fin de la chasse pour un joueur poursuivi par la main et jamais attrape.
     HAND_SURVIVE_XP = 40,
     HAND_SURVIVE_CASH = 150,

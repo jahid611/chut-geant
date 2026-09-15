@@ -25,6 +25,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local HandChaseController = require(script.Parent.HandChaseController)
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Tuning = require(Shared:WaitForChild("Tuning"))
 
@@ -1291,6 +1292,9 @@ end
 
 -- Attrape : habillage selon la cause, puis propulsion du personnage (simule chez ce client) et relevage.
 local function onCaught(reason: string, launch: Vector3): ()
+    if HandChaseController:IsGrabbing() then
+        return
+    end
     local character = player.Character
     local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
     local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
@@ -1304,7 +1308,22 @@ local function onCaught(reason: string, launch: Vector3): ()
         return
     end
     local stun = Tuning.CATCH_STUN_SECONDS
-    if reason == "mom" then
+    if reason == "hand" then
+        HandChaseController:Grab(character, humanoid, root, function()
+            shakeCamera(1.5)
+        end, function()
+            Screamer.play()
+            shout(character, "OUIIIN !", Theme.PINK, 1.4)
+        end, function()
+            local side = if math.random() < 0.5 then -1 else 1
+            launchPlayer(humanoid, root, launch, Vector3.new(14 * side, math.random(-4, 4), 10 * side))
+            task.delay(stun * 0.6, function()
+                if player.Character == character and humanoid.Parent and humanoid.Health > 0 then
+                    stunStars(character, stun + 1)
+                end
+            end)
+        end)
+    elseif reason == "mom" then
         local from = momOrigin()
         local delay = if from then SLIPPER_SECONDS else 0
         if from then

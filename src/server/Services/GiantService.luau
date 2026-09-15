@@ -76,25 +76,29 @@ local function cribPosition(): Vector3
 end
 
 -- Attrape un joueur : il lache son jouet et le client le propulse loin du berceau.
-function GiantService:Catch(player: Player, reason: string): ()
+function GiantService:Catch(player: Player, reason: string): boolean
     -- Cape d'ombre : invisible pour le bebe et pour maman.
     if Abilities.IsActive(player, "ShadowCape") then
-        return
+        return false
     end
     local now = os.clock()
     local last: number? = caughtAt[player]
     if last and now - last < Tuning.CATCH_STUN_SECONDS + 0.5 then
-        return
+        return false
     end
     local character = player.Character
     local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
     if root == nil or not root:IsA("BasePart") then
-        return
+        return false
     end
     caughtAt[player] = now
     -- Doudou bouclier : cette propulsion est annulee (le delai de recuperation compte quand meme).
     if Abilities.ConsumeShield(player) then
-        return
+        return false
+    end
+    -- Pour la main, les protections de Catch et huntTick partent du lacher : aucune recapture pendant la tenue.
+    if reason == "hand" then
+        caughtAt[player] = now + Tuning.HAND_GRAB_SECONDS
     end
     local away = root.Position - cribPosition()
     local flat = Vector3.new(away.X, 0, away.Z)
@@ -104,6 +108,7 @@ function GiantService:Catch(player: Player, reason: string): ()
     local remote = Remotes.Get("Caught") :: RemoteEvent
     remote:FireClient(player, reason, launch)
     caughtEvent:Fire(player, reason)
+    return true
 end
 
 --[[
