@@ -174,7 +174,12 @@ end
 -- Pose un jouet au repos sur son point. Il est lache juste au-dessus et tombe par gravite (un jouet pose a la main
 -- d'apres sa boite englobante semble leviter), puis il est ancre la ou il s'est arrete.
 local SETTLE_SECONDS = 1.5
-local settling: { [Instance]: number } = {}
+local settling: { [Instance]: {} } = {}
+
+-- Une prise annule aussi l'ancien rappel de pose : il ne doit pas figer un lancer suivant.
+function ToySpawnService:CancelSettling(toy: Instance): ()
+    settling[toy] = nil
+end
 
 local function validPoint(point: BasePart): boolean
     return point:IsDescendantOf(workspace) and CollectionService:HasTag(point, SPAWN_TAG)
@@ -258,7 +263,7 @@ local function rest(toy: Instance, spawnPart: BasePart): ()
     local facing = CFrame.Angles(0, math.rad(180 + random:NextNumber(-35, 35)), 0)
     pivot(toy, spawnPart.CFrame * CFrame.new(0, spawnPart.Size.Y / 2 + heightOf(toy) / 2 + 1, 0) * facing)
 
-    local token = (settling[toy] or 0) + 1
+    local token = {}
     settling[toy] = token
     for _, part in parts do
         part.Anchored = false
@@ -402,7 +407,7 @@ function ToySpawnService:PlaceAt(toy: Instance, cframe: CFrame): ()
         part.Anchored = true
     end
     pivot(toy, cframe * CFrame.new(0, heightOf(toy) / 2 + 1, 0))
-    local token = (settling[toy] or 0) + 1
+    local token = {}
     settling[toy] = token
     for _, part in parts do
         part.Anchored = false
