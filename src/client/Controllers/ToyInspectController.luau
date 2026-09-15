@@ -49,6 +49,7 @@ local player = Players.LocalPlayer
 local gui: ScreenGui? = nil
 local session: Session? = nil
 local busy = false
+local closeRequested = false
 
 -- Remonte d'une piece touchee jusqu'au modele de jouet, enfant direct de workspace.ToysLive.
 local function toyFrom(instance: Instance): Model?
@@ -102,6 +103,11 @@ local FREEZE_ACTION = "InspectionBloqueDeplacement"
 local function setControlsEnabled(enabled: boolean): ()
     local scripts = player:FindFirstChild("PlayerScripts")
     local moduleScript = if scripts then scripts:FindFirstChild("PlayerModule") else nil
+    if enabled then
+        -- Toujours delier le blocage des touches : si le PlayerModule est apparu entre l'ouverture (repli par touches
+        -- avalees) et la fermeture, seul Enable() etait appele et les deplacements restaient coupes.
+        ContextActionService:UnbindAction(FREEZE_ACTION)
+    end
     if moduleScript and moduleScript:IsA("ModuleScript") then
         local ok = pcall(function()
             local controls = (require :: any)(moduleScript):GetControls()
@@ -115,9 +121,7 @@ local function setControlsEnabled(enabled: boolean): ()
             return
         end
     end
-    if enabled then
-        ContextActionService:UnbindAction(FREEZE_ACTION)
-    else
+    if not enabled then
         ContextActionService:BindActionAtPriority(
             FREEZE_ACTION,
             function(): Enum.ContextActionResult
@@ -154,9 +158,16 @@ end
 
 local function close(): ()
     local current = session
-    if current == nil or busy then
+    if current == nil then
         return
     end
+    if busy then
+        -- Fermeture demandee pendant le vol de la camera (Echap, jouet ramasse, reapparition) : elle etait perdue et
+        -- la vue restait ouverte, deplacements coupes. Elle est rejouee a la fin de l'ouverture.
+        closeRequested = true
+        return
+    end
+    closeRequested = false
     busy = true
     session = nil
     for _, connection in current.connections do
@@ -372,6 +383,24 @@ local function open(toy: Model): ()
     )
     tweenCamera(CFrame.lookAt(eye, lookAt), FLY_SECONDS)
     busy = false
+    if closeRequested then
+        close()
+    end
+end
+
+-- Pas de fiche pendant l'action : le clic sert aussi a frapper et a viser, et une fiche ouverte en pleine course
+-- figeait le personnage d'un coup, le panneau passant inapercu sur le bord de l'ecran (utilisateur du 15/09 :
+-- « je cours et je me bloque d'un coup »). Seulement a l'arret, mains vides, sans arme en main.
+local function canInspect(): boolean
+    local character = player.Character
+    local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+    if character == nil or humanoid == nil then
+        return false
+    end
+    if humanoid.MoveDirection.Magnitude > 0.1 or character:FindFirstChildOfClass("Tool") ~= nil then
+        return false
+    end
+    return player:GetAttribute("CarriedToyId") == nil
 end
 
 function ToyInspectController:Init(): () end
@@ -404,7 +433,7 @@ function ToyInspectController:Start(): ()
         end
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             local toy = pickToy(input.Position)
-            if toy then
+            if toy and canInspect() then
                 task.spawn(open, toy)
             end
         elseif input.UserInputType == Enum.UserInputType.Touch then
@@ -424,7 +453,7 @@ function ToyInspectController:Start(): ()
         local moved = (input.Position - start.position).Magnitude
         if os.clock() - start.time <= TAP_MAX_SECONDS and moved <= TAP_MAX_PIXELS then
             local toy = pickToy(input.Position)
-            if toy then
+            if toy and canInspect() then
                 task.spawn(open, toy)
             end
         end

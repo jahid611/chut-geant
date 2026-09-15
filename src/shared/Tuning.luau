@@ -70,8 +70,10 @@ local Tuning = {
     -- Vitesse de la main (studs/s), lineaire du debut a la fin de la chasse : on la distance a vide (marche 17), pas
     -- en portant un jouet (13,5 / 9,5 / 7,5) sans Furie.
     -- 15/09 soir : « elle est super lente » ; avec la marche a 22, elle part a 20 et finit a 30 (rattrape a vide).
-    HAND_SPEED_START = 20,
-    HAND_SPEED_END = 30,
+    -- 15/09 nuit : « beaucoup beaucoup beaucoup trop lente, elle me rattrape jamais » : pres de 2x a 3x la marche
+    -- (22, Furie ~30), pour qu'elle rattrape vraiment un joueur de la chambre pendant les 7 s de chasse.
+    HAND_SPEED_START = 42,
+    HAND_SPEED_END = 60,
     -- Contact : distance horizontale au centre de l'ombre, et ecart vertical maximal (sauter ne suffit pas a passer).
     HAND_CATCH_RADIUS = 7,
     HAND_REACH_HEIGHT = 12,
