@@ -121,14 +121,16 @@ local Assets: { [string]: string } = {
     jouetConsole = "rbxassetid://123358009023756",
 
     -- Armes (Shared/CatalogWeapons) : icones a generer/televerser ; « 0 » = tuile de la carte en attendant.
-    iconeArmeTapette = "rbxassetid://75932780013909",
+    -- Icones v4 (15/09) : rendu du vrai modele de ServerStorage.WeaponModels puis FLUX a partir de ce rendu, decoupe a
+    -- sa silhouette (tools/gen2d/lot-armes-v4). L'oreiller attend son vrai modele (ce n'est qu'une Part en marbre).
+    iconeArmeTapette = "rbxassetid://112483137330297",
     iconeArmeOreiller = "rbxassetid://94740568307496",
-    iconeArmeBatte = "rbxassetid://130055521892480",
-    iconeArmeEpee = "rbxassetid://97146001242060",
-    iconeArmeChausson = "rbxassetid://109884285099014",
-    iconeArmePistolet = "rbxassetid://92578920534959",
-    iconeArmeMarteau = "rbxassetid://125577589908156",
-    iconeArmeBaguette = "rbxassetid://120483477143609",
+    iconeArmeBatte = "rbxassetid://85286878326817",
+    iconeArmeEpee = "rbxassetid://76797138688297",
+    iconeArmeChausson = "rbxassetid://109495423620813",
+    iconeArmePistolet = "rbxassetid://88667546317662",
+    iconeArmeMarteau = "rbxassetid://72705449477288",
+    iconeArmeBaguette = "rbxassetid://80435739123622",
     iconeLampeFrontale = "rbxassetid://101639883070218",
     iconeTraineeTetineOr = "rbxassetid://117331306464154",
 }
