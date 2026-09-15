@@ -11,9 +11,9 @@
     « rbxassetid://0 » = pas encore televersee : la place reste vide (aucun emoji dans l'interface).
 ]]
 
-local COFFRE = "rbxassetid://95879419648698"
-local CHAUSSONS = "rbxassetid://87140632236955"
-local BRAS = "rbxassetid://90967024116965"
+local COFFRE = "rbxassetid://100871723457501"
+local CHAUSSONS = "rbxassetid://90286131605131"
+local BRAS = "rbxassetid://85248047436654"
 
 local Assets: { [string]: string } = {
     tetine = "rbxassetid://75557557265633",
@@ -39,18 +39,18 @@ local Assets: { [string]: string } = {
     -- Boutique complete et retention (14/09/2026) : icones FLUX locales + 3 Higgsfield, detourees (assets/ui/propres),
     -- televersees lentement (registre assets/ui/registry-boutique.json ; valeurs = identifiants d'Image releves par
     -- InsertService). « 0 » = pas encore televersee.
-    pouvoirFurie = "rbxassetid://92871761535786",
+    pouvoirFurie = "rbxassetid://98064621011023",
     pouvoirTetine = "rbxassetid://78137565006209",
     pouvoirHochet = "rbxassetid://126020959448999",
     pouvoirDoudou = "rbxassetid://140544929780606",
-    pouvoirVentouse = "rbxassetid://126850161419156",
+    pouvoirVentouse = "rbxassetid://130297359868084",
     pouvoirCape = "rbxassetid://127303170357351",
     pouvoirBerceuse = "rbxassetid://90566164976227",
-    ameliorationSac = "rbxassetid://107683777053459",
-    ameliorationAimant = "rbxassetid://134414419532870",
-    ameliorationOreille = "rbxassetid://115243667055987",
+    ameliorationSac = "rbxassetid://98834378870472",
+    ameliorationAimant = "rbxassetid://116596197203586",
+    ameliorationOreille = "rbxassetid://112355531813405",
     -- rendu de notre coffre dore 3D (Tripo), un seul visuel par chose
-    coffreDore = "rbxassetid://84339907965296",
+    coffreDore = "rbxassetid://110337351315014",
     cosmetiqueTrainee = "rbxassetid://78638078661690",
     cosmetiqueDanse = "rbxassetid://104238668526796",
     cosmetiqueContour = "rbxassetid://103864019240429",
@@ -67,21 +67,21 @@ local Assets: { [string]: string } = {
 
     -- Une icone propre a chaque article de la boutique (15/09/2026, retour utilisateur : le tipi servait pour tous
     -- les decors). « 0 » tant que non televersee : la carte montre alors l'icone de sa categorie.
-    iconeTraineeArc = "rbxassetid://123940325069868",
-    iconeTraineeEtoiles = "rbxassetid://121676432579481",
-    iconeTraineeCoeurs = "rbxassetid://93417719882168",
-    iconeDanseJoie = "rbxassetid://79681702863021",
-    iconeDanseRobot = "rbxassetid://70962427264002",
-    iconeDanseToupie = "rbxassetid://82476150966759",
-    iconeContourDore = "rbxassetid://121516826341967",
-    iconeContourArc = "rbxassetid://113186214970336",
-    iconeDecorGuirlande = "rbxassetid://136274084632623",
-    iconeDecorTipi = "rbxassetid://135722238943421",
-    iconeDecorPouf = "rbxassetid://135263649869208",
-    iconeDecorLampe = "rbxassetid://93928971371009",
-    iconeDecorTrophee = "rbxassetid://114132502678694",
-    iconeDecorDino = "rbxassetid://72046075111710",
-    iconeOreillesLapin = "rbxassetid://86785158843521",
+    iconeTraineeArc = "rbxassetid://98320351351998",
+    iconeTraineeEtoiles = "rbxassetid://94425480362475",
+    iconeTraineeCoeurs = "rbxassetid://90582564687291",
+    iconeDanseJoie = "rbxassetid://118062556932382",
+    iconeDanseRobot = "rbxassetid://90207616126263",
+    iconeDanseToupie = "rbxassetid://122496043008407",
+    iconeContourDore = "rbxassetid://125697903732986",
+    iconeContourArc = "rbxassetid://104140807676586",
+    iconeDecorGuirlande = "rbxassetid://73273469272328",
+    iconeDecorTipi = "rbxassetid://70721118750540",
+    iconeDecorPouf = "rbxassetid://102037191441932",
+    iconeDecorLampe = "rbxassetid://85486966314122",
+    iconeDecorTrophee = "rbxassetid://116196248944850",
+    iconeDecorDino = "rbxassetid://113081320075103",
+    iconeOreillesLapin = "rbxassetid://82734500743913",
     -- Decors de la boite a outils Roblox (Shared/CatalogDecor) : rendus a televerser ; « 0 » = icone de categorie.
     iconeDecorCanard = "rbxassetid://0",
     iconeDecorCoussinCoeur = "rbxassetid://0",
@@ -121,14 +121,16 @@ local Assets: { [string]: string } = {
     jouetConsole = "rbxassetid://123358009023756",
 
     -- Armes (Shared/CatalogWeapons) : icones a generer/televerser ; « 0 » = tuile de la carte en attendant.
-    iconeArmeTapette = "rbxassetid://111576275835621",
-    iconeArmeOreiller = "rbxassetid://75242060205545",
-    iconeArmeBatte = "rbxassetid://84595873222274",
-    iconeArmeEpee = "rbxassetid://74442360162081",
-    iconeArmeChausson = "rbxassetid://81049975920705",
-    iconeArmePistolet = "rbxassetid://125515778134583",
-    iconeArmeMarteau = "rbxassetid://88534571810461",
-    iconeArmeBaguette = "rbxassetid://116063935188388",
+    iconeArmeTapette = "rbxassetid://75932780013909",
+    iconeArmeOreiller = "rbxassetid://94740568307496",
+    iconeArmeBatte = "rbxassetid://130055521892480",
+    iconeArmeEpee = "rbxassetid://97146001242060",
+    iconeArmeChausson = "rbxassetid://109884285099014",
+    iconeArmePistolet = "rbxassetid://92578920534959",
+    iconeArmeMarteau = "rbxassetid://125577589908156",
+    iconeArmeBaguette = "rbxassetid://120483477143609",
+    iconeLampeFrontale = "rbxassetid://101639883070218",
+    iconeTraineeTetineOr = "rbxassetid://117331306464154",
 }
 
 return Assets

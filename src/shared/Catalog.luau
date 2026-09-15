@@ -340,7 +340,7 @@ local ITEMS: { Item } = {
         slot = "lamp",
         name = "Lampe frontale",
         description = "Éclaire devant toi, même dans le noir.",
-        icon = "iconeDecorLampe",
+        icon = "iconeLampeFrontale",
         prices = { 18000 },
     },
     -- Exclusif : recompense de la mission du jour « Vole la tetine du bebe » (PacifierMissionService).
@@ -351,7 +351,7 @@ local ITEMS: { Item } = {
         slot = "trail",
         name = "Traînée de la tétine d'or",
         description = "Exclusif : vole la tétine du bébé.",
-        icon = "pouvoirTetine",
+        icon = "iconeTraineeTetineOr",
         prices = { 0 },
         exclusive = true,
     },

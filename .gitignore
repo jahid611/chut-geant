@@ -47,3 +47,8 @@ assets/concepts/
 assets/textures/
 docs/captures*
 docs/videos/
+
+# Icones v3 : brouillons locaux (seules les versions envoyees sont versionnees)
+assets/ui/icones-v3/gpt/
+assets/ui/icones-v3/bruts/
+assets/ui/icones-v3/propres/

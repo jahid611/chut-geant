@@ -651,3 +651,16 @@ Avancement à 04h30 :
   connu.
 - Audit de débordement (écran 2288 × 1201, collection ouverte) : rien hors écran, aucun texte de notre interface qui
   déborde. Reste à regarder sur téléphone.
+
+### 15/09/2026, 17 h 15 — icônes v3 et maman en colère en 3D
+- **Studio a planté** (« Device removed », carte graphique saturée) : relancé sur `chut-geant.rbxl` sauvegardé à 04:12,
+  code renvoyé par `tools/push-src.mjs` (Rojo pas reconnecté). **Sauvegarder la place (Ctrl+S) au retour.**
+- **34 icônes v3** (`assets/ui/registry-icones-v3.json`) branchées dans `Ui/Assets`, vues en boutique. L'onglet
+  Coffres était vide sur la capture alors que l'image `100871723457501` se charge (`AssetFetchStatus.Success`) :
+  l'icône (coffre bleu plein de jouets, clé `ongletCoffres`) n'était sans doute pas encore chargée à la première
+  ouverture ; à revérifier.
+- **Maman en colère en 3D essayée puis refusée** : le modèle Meshy (asset `122981112451750`, chargé dans
+  `ReplicatedStorage.ScreamerModels.MamanColere`) marchait en jeu, mais l'utilisateur le trouve bien moins beau que
+  l'image. Le jumpscare garde l'image « femme jumpscare » (`97997221493943`).
+- À corriger : le bandeau d'événement (« Panne de veilleuse ! ») passe sur le titre de la boutique ; avertissement
+  « ToyModels.Pacifier absent » au démarrage alors que le modèle existe (ordre de chargement ?).
