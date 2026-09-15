@@ -31,5 +31,16 @@
     "remarques_graves": 2,
     "playtests_rates": 0,
     "duree_min": 26
+  },
+  {
+    "date": "2026-09-15T12:57:23.036Z",
+    "tache": "La chasse du bébé devient une course-poursuite. Aujourd'hui (GiantService.huntTick) pendant les 10 s de chasse tout joueur de la chambre qui bouge ou saute est propulsé : la bonne réponse est de ne rien faire, ce n'est pas un moment fort. Objectif : pendant la chasse, une ombre de main géante (pas de modèle 3D de main disponible : grande ombre au sol avec l'image déjà téléversée rbxassetid://123681637407382, aucun décor en pièces de base) part du berceau et poursuit un joueur de la chambre (priorité à celui qui porte un jouet), un peu moins vite que la marche puis plus vite en fin de chasse ; refuges pour y échapper (HideZone, ShadowZone, sa base) ; contact = capture par le bébé avec le screamer existant ; survivre à la chasse dans la chambre = petite prime et message. Tout décidé côté serveur, le client affiche. Compatibilité à garder : Cape d'ombre, Doudou bouclier, Hochet leurre, Berceuse, regards brefs (Glance), maman, cuisine, jauge et tension. Texte français, aucun emoji.",
+    "type": "gameplay",
+    "implementeur": "claude",
+    "relecteur": "gpt",
+    "iterations": 2,
+    "remarques_graves": 1,
+    "playtests_rates": 0,
+    "duree_min": 18
   }
 ]

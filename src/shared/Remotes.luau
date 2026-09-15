@@ -119,6 +119,8 @@ local DECLARATIONS: { [string]: string } = {
     -- Client -> serveur (RemoteFunction) : (toyId: string) -> (ok: boolean) prepare l'apercu 3D d'un jouet sans image
     -- dans ReplicatedStorage.ApercusJouets.<toyId> (ToyPreviewService), pour la collection.
     ToyPreview = "RemoteFunction",
+    -- Serveur -> client : ("survived", cash: number, xp: number) le joueur a echappe a la main geante (HandChaseService).
+    ChaseNotice = "RemoteEvent",
 }
 
 local Remotes = {}

@@ -38,7 +38,22 @@ local Tuning = {
 
     -- Geant
     GIANT_WAKE_SECONDS = 2,
-    GIANT_HUNT_SECONDS = 10,
+    -- 10 -> 14 : la chasse est devenue une course-poursuite (HandChaseService), il faut le temps de fuir.
+    GIANT_HUNT_SECONDS = 14,
+    -- Main geante (HandChaseService) : pendant une chasse de reveil, une ombre de main poursuit un joueur de la
+    -- chambre au lieu de la regle « bouger = attrape » (false = ancienne regle).
+    HAND_CHASE_ENABLED = true,
+    -- Vitesse de la main (studs/s), lineaire du debut a la fin de la chasse : on la distance a vide (marche 17), pas
+    -- en portant un jouet (13,5 / 9,5 / 7,5) sans Furie.
+    HAND_SPEED_START = 13,
+    HAND_SPEED_END = 19,
+    -- Contact : distance horizontale au centre de l'ombre, et ecart vertical maximal (sauter ne suffit pas a passer).
+    HAND_CATCH_RADIUS = 7,
+    HAND_REACH_HEIGHT = 12,
+    HAND_RETARGET_SECONDS = 0.3,
+    -- Prime a la fin de la chasse pour un joueur poursuivi par la main et jamais attrape.
+    HAND_SURVIVE_XP = 40,
+    HAND_SURVIVE_CASH = 150,
     -- Pendant la chasse, se deplacer plus vite que ceci (studs/s, mesure sur 0,2 s) = propulse, a chaque fois.
     GIANT_FREEZE_SPEED = 2.5,
     -- Monter de plus que ceci (studs) entre deux controles = saut = propulse aussi.

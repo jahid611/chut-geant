@@ -39,6 +39,11 @@ local GiantService = {}
 -- (player: Player, reason: string) un joueur vient d'etre attrape et propulse (ComboService : le combo retombe).
 local caughtEvent = Instance.new("BindableEvent")
 GiantService.Caught = caughtEvent.Event
+-- (state: GiantState, endsAt: number, glance: boolean, cause: string?) nouvel etat ; glance vrai pour un regard bref ;
+-- cause "huntEnded" seulement quand une chasse de reveil arrive a son terme normal (pas Berceuse ni regard bref).
+-- Utilise par HandChaseService.
+local stateEvent = Instance.new("BindableEvent")
+GiantService.StateChanged = stateEvent.Event
 
 local state: GiantState = "Sleeping"
 local endsAt = 0
@@ -48,14 +53,16 @@ local glanceToken = 0
 -- Invalide les delais d'un reveil en cours (Berceuse).
 local wakeToken = 0
 
-local function setState(newState: GiantState, duration: number): ()
+local function setState(newState: GiantState, duration: number, cause: string?): ()
     state = newState
     endsAt = workspace:GetServerTimeNow() + duration
     local giant = workspace:FindFirstChild("Geant")
     if giant then
         giant:SetAttribute("State", newState)
     end
-    (Remotes.Get("GiantState") :: RemoteEvent):FireAllClients(state, endsAt)
+    local remote = Remotes.Get("GiantState") :: RemoteEvent
+    remote:FireAllClients(state, endsAt)
+    stateEvent:Fire(state, endsAt, glancing, cause)
 end
 
 local function cribPosition(): Vector3
@@ -170,6 +177,10 @@ function GiantService:GetState(): (GiantState, number)
     return state, endsAt
 end
 
+function GiantService:GetCribPosition(): Vector3
+    return cribPosition()
+end
+
 -- Reveille le bebe. instant : presque sans preavis (jouet piege qui explose).
 function GiantService:Wake(instant: boolean?): ()
     if state ~= "Sleeping" or glancing then
@@ -189,7 +200,7 @@ function GiantService:Wake(instant: boolean?): ()
             if token ~= wakeToken then
                 return
             end
-            setState("Sleeping", 0)
+            setState("Sleeping", 0, "huntEnded")
             NoiseService:Reset()
         end)
     end)
@@ -255,7 +266,8 @@ function GiantService:Start(): ()
     end)
 
     RunService.Heartbeat:Connect(function()
-        if state == "Hunting" and not glancing then
+        -- Avec la main geante (HandChaseService), la regle « bouger = attrape » ne sert plus pendant la chasse.
+        if state == "Hunting" and not glancing and not Tuning.HAND_CHASE_ENABLED then
             huntTick()
         end
     end)

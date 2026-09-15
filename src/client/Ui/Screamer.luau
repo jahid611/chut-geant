@@ -23,8 +23,9 @@ local TweenService = game:GetService("TweenService")
 local BabyHead = require(script.Parent.BabyHead)
 local Sfx = require(script.Parent.Sfx)
 
--- Raisons du remote Caught qui viennent du bebe (GiantService:Catch) ; mom, dog et hit n'en sont pas.
-local BABY_REASONS = { moved = true, jumped = true, seen = true }
+-- Raisons du remote Caught qui viennent du bebe (GiantService:Catch, main geante « hand » comprise) ; mom, dog et
+-- hit n'en sont pas.
+local BABY_REASONS = { moved = true, jumped = true, seen = true, hand = true }
 
 local APPROACH = 0.7
 local HOLD = 0.3
