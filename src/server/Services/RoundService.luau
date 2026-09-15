@@ -26,6 +26,8 @@ local state: Rules.State? = nil
 local finale = false
 local resultReady = false
 local nextPublish = 0
+-- Vrai quand un dépôt compté, une arrivée ou un départ doit être republié ; les transitions publient tout de suite.
+local dirty = false
 
 local function ready(player: Player): boolean
     -- Chests est posé après l'initialisation de la monnaie ; Cash seul peut être posé par un autre service.
@@ -43,6 +45,7 @@ local function readyCount(): number
 end
 
 local function publish(): ()
+    dirty = false
     revision += 1
     local current = state
     local rows: { Rules.Entry } = if current then Rules.Rank(current) else {}
@@ -219,7 +222,8 @@ local function step(): ()
             publish()
         end
     end
-    if now >= nextPublish then
+    -- Rien n'est republié tant que rien ne change : le compte à rebours est calculé par le client depuis MancheFin.
+    if dirty and now >= nextPublish then
         publish()
     end
 end
@@ -255,9 +259,15 @@ function RoundService:Start(): ()
             finish(now)
             return
         end
-        Rules.Deposit(current, roundId, now, player.UserId, player.DisplayName, source)
+        if Rules.Deposit(current, roundId, now, player.UserId, player.DisplayName, source) then
+            dirty = true
+        end
+    end)
+    Players.PlayerAdded:Connect(function()
+        dirty = true
     end)
     Players.PlayerRemoving:Connect(function(leaving: Player)
+        dirty = true
         -- Aucune référence Player conservée ; les contributions restent indexées par UserId.
         for _, player in Players:GetPlayers() do
             if player ~= leaving then

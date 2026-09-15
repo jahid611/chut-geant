@@ -297,7 +297,7 @@ function RoundController:Start(): ()
             Theme.label(
                 list,
                 "Vide",
-                "Le premier dépôt lance le classement !",
+                if isResult then "Personne n'a ramené de jouet." else "Le premier dépôt lance le classement !",
                 UDim2.new(1, 0, 0, 60),
                 UDim2.new(),
                 Theme.SOFT_TEXT,
@@ -398,7 +398,8 @@ function RoundController:Start(): ()
                 title.TextColor3 = if celebrate
                     then Theme.YELLOW:Lerp(Theme.WHITE, (math.sin(os.clock() * 5) + 1) / 2)
                     else Theme.YELLOW
-                if s.resultReady and shownResult ~= s.id and not blocked() and not eventVisible() then
+                -- Bilan ouvert tout seul seulement pour ceux qui ont contribué ; les autres ont la barre.
+                if s.resultReady and shownResult ~= s.id and p.count > 0 and not blocked() and not eventVisible() then
                     openModal()
                 end
             end
