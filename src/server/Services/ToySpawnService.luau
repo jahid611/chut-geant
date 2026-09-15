@@ -353,7 +353,12 @@ end
 -- Pose un jouet a un endroit libre (lache par un joueur) : il tombe par gravite puis se fige, comme a l'apparition.
 function ToySpawnService:PlaceAt(toy: Instance, cframe: CFrame, ignoredCharacter: Model?): ()
     local room = Placement.RoomAt(cframe.Position + Vector3.new(0, 3, 0))
-    local ground = if room then Placement.Ground(room, cframe.Position, toy) else nil
+    -- Pres d'une base, d'une porte ou d'une cachette, les volumes de securite des apparitions refusent le sol : le jouet
+    -- pose ou lance repartait a son point d'apparition (« ca bug bizarre pres de ma base », utilisateur du 15/09). Un
+    -- lacher prend alors le parquet juste en dessous ; la physique le fait tomber et le fige comme d'habitude.
+    local ground = if room
+        then Placement.Ground(room, cframe.Position, toy) or Placement.FloorAt(room, cframe.Position)
+        else nil
     if room and ground then
         local center = Vector3.new(ground.X, math.max(cframe.Position.Y, ground.Y) + heightOf(toy) / 2 + 1, ground.Z)
         Physics.Launch(toy, CFrame.new(center) * cframe.Rotation, Vector3.zero, room, ground, nil, ignoredCharacter)
@@ -391,10 +396,8 @@ function ToySpawnService:Launch(
         end
     end
     if ground == nil and room then
-        local point = spawnOf[toy]
-        if point and point:IsDescendantOf(room) then
-            ground = Placement.RandomGround(point, toy)
-        end
+        -- Secours du vol : le parquet sous le lacher, pas un tirage dans la zone d'apparition (teleportation, 15/09).
+        ground = Placement.FloorAt(room, fallback)
     end
     if room == nil or ground == nil then
         self:ReturnToSpawn(toy)

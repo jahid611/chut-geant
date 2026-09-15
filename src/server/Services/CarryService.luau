@@ -644,8 +644,9 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
     end
     local floor = groundAt(root.Position)
     if floor == nil then
+        -- Pas de sol mesure sous le joueur : pose a ses pieds plutot qu'un retour au point d'apparition.
         setPromptEnabled(toy, true)
-        ToySpawnService:ReturnToSpawn(toy)
+        ToySpawnService:PlaceAt(toy, CFrame.new(root.Position) * rotation, player.Character)
         return
     end
     local chest =
@@ -673,8 +674,10 @@ function CarryService:Throw(player: Player, direction: Vector3): ()
         or #workspace:GetPartBoundsInBox(CFrame.new(start) * rotation, size, overlap) > 0
         or workspace:Blockcast(CFrame.new(chest) * rotation, size, start - chest, params) ~= nil
     then
+        -- Contre une base ou un mur, le lancer devient une pose aux pieds du joueur : le jouet repartait a son point
+        -- d'apparition (« ca bug bizarre pres de ma base », utilisateur du 15/09).
         setPromptEnabled(toy, true)
-        ToySpawnService:ReturnToSpawn(toy)
+        ToySpawnService:PlaceAt(toy, CFrame.new(root.Position) * rotation, player.Character)
         return
     end
     local velocity = aim * (Tuning.THROW_SPEED / weight) + Vector3.new(0, Tuning.THROW_UP / math.sqrt(weight), 0)

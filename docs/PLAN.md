@@ -721,3 +721,20 @@ Avancement à 04h30 :
   Vu en jeu, propre. L'image « femme jumpscare » (`97997221493943`) n'est plus utilisée.
 - À corriger : le bandeau d'événement (« Panne de veilleuse ! ») passe sur le titre de la boutique ; avertissement
   « ToyModels.Pacifier absent » au démarrage alors que le modèle existe (ordre de chargement ?).
+
+### 15/09/2026, 19 h 30 — lancer et pose près des bases
+- **Bug utilisateur** (« quand je lance un jouet proche de ma base ça bug bizarre ») : trois chemins renvoyaient le
+  jouet à son point d'apparition. `PlaceAt` quand `Placement.Ground` refusait le sol (volumes de sécurité des
+  apparitions autour de Base, BaseDoor, HideZone, InteriorZone et KitchenDoor), `Throw` quand le départ était bloqué
+  par la base ou un mur, et le dernier secours de `Launch`.
+- **Correction** : `PlaceAt` prend le parquet sous le lâcher (`Placement.FloorAt`) quand `Ground` refuse, `Throw`
+  bloqué devient une pose aux pieds du joueur, `Launch` utilise le parquet sous le lâcher au lieu d'un tirage dans la
+  zone d'apparition. Le retour à l'apparition ne reste que hors des pièces connues.
+- **Vérifié en jeu** (test serveur, cube `Block`) devant les six bases, recul 0 et 10 studs : F vers la base, F dos à
+  la base, G ; 34 OK, 2 prises refusées par le banc, aucun jouet téléporté ni détruit, 0 erreur.
+- **Lot 1 de GPT abandonné** : sa nouvelle géométrie de libération refusait presque tout (banc `lancer_partout` :
+  4 OK, 190 à 198 refus sur 220, puis 18 échecs après deux itérations). Diff archivé dans
+  `tools/reviews/tasks/2026-09-15T15-56-10-463Z/lot1-gpt-rejete.patch` (et son test `.lune`), tâche de l'arbitre
+  non clôturée.
+- Reste : portée des lancers depuis le devant des bases (8 à 10 studs dos à la base, 42 à 45 ailleurs), intérieurs
+  des bases non testés.
