@@ -1263,11 +1263,25 @@ local function throwSlipper(from: Vector3, root: BasePart): ()
 end
 
 local function launchPlayer(humanoid: Humanoid, root: BasePart, launch: Vector3, spin: Vector3): ()
+    -- Etourdissement partage (attribut local EtourdiJusqua, lu par CharacterRecoveryController) : deux captures
+    -- rapprochees prolongent l'etourdissement au lieu que le premier delai relache le joueur en plein second lancer
+    -- (joueur reste couche au sol, capture utilisateur du 15/09).
+    local character = humanoid.Parent
+    local untilTime = os.clock() + Tuning.CATCH_STUN_SECONDS
+    if character then
+        local current = character:GetAttribute("EtourdiJusqua")
+        if typeof(current) == "number" and current > untilTime then
+            untilTime = current
+        end
+        character:SetAttribute("EtourdiJusqua", untilTime)
+    end
     humanoid.PlatformStand = true
     root.AssemblyLinearVelocity = launch
     root.AssemblyAngularVelocity = spin
     task.delay(Tuning.CATCH_STUN_SECONDS, function()
-        if humanoid.Parent then
+        local latest = if character then character:GetAttribute("EtourdiJusqua") else nil
+        local stillStunned = typeof(latest) == "number" and latest > os.clock() + 0.05
+        if humanoid.Parent and not stillStunned then
             humanoid.PlatformStand = false
             root.AssemblyAngularVelocity = Vector3.zero
             humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)

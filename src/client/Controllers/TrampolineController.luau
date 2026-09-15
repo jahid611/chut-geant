@@ -47,9 +47,24 @@ function TrampolineController:Start(): ()
         local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
         local facing = if flat.Magnitude > 0.1 then flat.Unit else root.CFrame.LookVector
         humanoid.PlatformStand = true
+        -- meme etourdissement partage que les captures : CharacterRecoveryController ne releve pas un joueur en plein vol
+        local flightEnd = os.clock() + seconds + 0.5
+        local current = character:GetAttribute("EtourdiJusqua")
+        character:SetAttribute(
+            "EtourdiJusqua",
+            if typeof(current) == "number" and current > flightEnd then current else flightEnd
+        )
         local started = os.clock()
         local connection: RBXScriptConnection? = nil
         connection = RunService.Heartbeat:Connect(function()
+            -- personnage detruit ou mort en plein vol : le rebond restait bloque (flying jamais remis a faux)
+            if root.Parent == nil or humanoid.Health <= 0 then
+                if connection then
+                    connection:Disconnect()
+                end
+                flying = false
+                return
+            end
             local t = math.min(os.clock() - started, seconds)
             local alpha = t / seconds
             local position = from + flat * alpha + Vector3.new(0, vy * t - g * t * t / 2, 0)
